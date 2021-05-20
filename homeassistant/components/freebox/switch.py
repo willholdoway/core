@@ -1,12 +1,14 @@
 """Support for Freebox Delta, Revolution and Mini 4K."""
+from __future__ import annotations
+
 import logging
-from typing import Dict
 
-from aiofreepybox.exceptions import InsufficientPermissionsError
+from freebox_api.exceptions import InsufficientPermissionsError
 
-from homeassistant.components.switch import SwitchDevice
+from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
 
 from .const import DOMAIN
 from .router import FreeboxRouter
@@ -15,14 +17,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistantType, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ) -> None:
     """Set up the switch."""
     router = hass.data[DOMAIN][entry.unique_id]
     async_add_entities([FreeboxWifiSwitch(router)], True)
 
 
-class FreeboxWifiSwitch(SwitchDevice):
+class FreeboxWifiSwitch(SwitchEntity):
     """Representation of a freebox wifi switch."""
 
     def __init__(self, router: FreeboxRouter) -> None:
@@ -48,7 +50,7 @@ class FreeboxWifiSwitch(SwitchDevice):
         return self._state
 
     @property
-    def device_info(self) -> Dict[str, any]:
+    def device_info(self) -> DeviceInfo:
         """Return the device information."""
         return self._router.device_info
 
@@ -59,7 +61,7 @@ class FreeboxWifiSwitch(SwitchDevice):
             await self._router.wifi.set_global_config(wifi_config)
         except InsufficientPermissionsError:
             _LOGGER.warning(
-                "Home Assistant does not have permissions to modify the Freebox settings. Please refer to documentation."
+                "Home Assistant does not have permissions to modify the Freebox settings. Please refer to documentation"
             )
 
     async def async_turn_on(self, **kwargs):

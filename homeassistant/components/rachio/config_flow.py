@@ -2,21 +2,21 @@
 import logging
 
 from rachiopy import Rachio
+from requests.exceptions import ConnectTimeout
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
-from homeassistant.const import CONF_API_KEY
+from homeassistant.const import CONF_API_KEY, HTTP_OK
 from homeassistant.core import callback
 
 from .const import (
     CONF_MANUAL_RUN_MINS,
     DEFAULT_MANUAL_RUN_MINS,
+    DOMAIN,
     KEY_ID,
     KEY_STATUS,
     KEY_USERNAME,
-    RACHIO_API_EXCEPTIONS,
 )
-from .const import DOMAIN  # pylint:disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,22 +31,21 @@ async def validate_input(hass: core.HomeAssistant, data):
     rachio = Rachio(data[CONF_API_KEY])
     username = None
     try:
-        data = await hass.async_add_executor_job(rachio.person.getInfo)
+        data = await hass.async_add_executor_job(rachio.person.info)
         _LOGGER.debug("rachio.person.getInfo: %s", data)
-        if int(data[0][KEY_STATUS]) != 200:
+        if int(data[0][KEY_STATUS]) != HTTP_OK:
             raise InvalidAuth
 
         rachio_id = data[1][KEY_ID]
         data = await hass.async_add_executor_job(rachio.person.get, rachio_id)
         _LOGGER.debug("rachio.person.get: %s", data)
-        if int(data[0][KEY_STATUS]) != 200:
+        if int(data[0][KEY_STATUS]) != HTTP_OK:
             raise CannotConnect
 
         username = data[1][KEY_USERNAME]
-    # Yes we really do get all these exceptions (hopefully rachiopy switches to requests)
-    except RACHIO_API_EXCEPTIONS as error:
+    except ConnectTimeout as error:
         _LOGGER.error("Could not reach the Rachio API: %s", error)
-        raise CannotConnect
+        raise CannotConnect from error
 
     # Return info that you want to store in the config entry.
     return {"title": username}
@@ -56,15 +55,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Rachio."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_PUSH
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
+            await self.async_set_unique_id(user_input[CONF_API_KEY])
+            self._abort_if_unique_id_configured()
             try:
                 info = await validate_input(self.hass, user_input)
-
+                return self.async_create_entry(title=info["title"], data=user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -73,30 +73,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
-            if "base" not in errors:
-                await self.async_set_unique_id(user_input[CONF_API_KEY])
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=info["title"], data=user_input)
-
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
 
-    async def async_step_homekit(self, homekit_info):
+    async def async_step_homekit(self, discovery_info):
         """Handle HomeKit discovery."""
-        if self._async_current_entries():
-            # We can see rachio on the network to tell them to configure
-            # it, but since the device will not give up the account it is
-            # bound to and there can be multiple rachio systems on a single
-            # account, we avoid showing the device as discovered once
-            # they already have one configured as they can always
-            # add a new one via "+"
-            return self.async_abort(reason="already_configured")
+        self._async_abort_entries_match()
+        properties = {
+            key.lower(): value for (key, value) in discovery_info["properties"].items()
+        }
+        await self.async_set_unique_id(properties["id"])
         return await self.async_step_user()
-
-    async def async_step_import(self, user_input):
-        """Handle import."""
-        return await self.async_step_user(user_input)
 
     @staticmethod
     @callback

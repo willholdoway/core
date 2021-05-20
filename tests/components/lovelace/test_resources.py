@@ -1,8 +1,7 @@
 """Test Lovelace resources."""
 import copy
+from unittest.mock import patch
 import uuid
-
-from asynctest import patch
 
 from homeassistant.components.lovelace import dashboard, resources
 from homeassistant.setup import async_setup_component

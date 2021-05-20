@@ -3,11 +3,10 @@ from datetime import datetime, timedelta
 import logging
 import time
 
-from pytz import timezone
 import requests
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_HOST,
@@ -23,9 +22,10 @@ from homeassistant.const import (
     DATA_TERABYTES,
     DATA_YOTTABYTES,
     DATA_ZETTABYTES,
+    HTTP_OK,
 )
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
+from homeassistant.util import dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,11 +52,11 @@ SENSOR_TYPES = {
 }
 
 ENDPOINTS = {
-    "diskspace": "http{0}://{1}:{2}/{3}api/diskspace",
-    "upcoming": "http{0}://{1}:{2}/{3}api/calendar?start={4}&end={5}",
-    "movies": "http{0}://{1}:{2}/{3}api/movie",
-    "commands": "http{0}://{1}:{2}/{3}api/command",
-    "status": "http{0}://{1}:{2}/{3}api/system/status",
+    "diskspace": "{0}://{1}:{2}/{3}api/diskspace",
+    "upcoming": "{0}://{1}:{2}/{3}api/calendar?start={4}&end={5}",
+    "movies": "{0}://{1}:{2}/{3}api/movie",
+    "commands": "{0}://{1}:{2}/{3}api/command",
+    "status": "{0}://{1}:{2}/{3}api/system/status",
 }
 
 # Support to Yottabytes for the future, why not
@@ -94,7 +94,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities([RadarrSensor(hass, config, sensor) for sensor in conditions], True)
 
 
-class RadarrSensor(Entity):
+class RadarrSensor(SensorEntity):
     """Implementation of the Radarr sensor."""
 
     def __init__(self, hass, conf, sensor_type):
@@ -105,14 +105,13 @@ class RadarrSensor(Entity):
         self.port = conf.get(CONF_PORT)
         self.urlbase = conf.get(CONF_URLBASE)
         if self.urlbase:
-            self.urlbase = "{}/".format(self.urlbase.strip("/"))
+            self.urlbase = f"{self.urlbase.strip('/')}/"
         self.apikey = conf.get(CONF_API_KEY)
         self.included = conf.get(CONF_INCLUDED)
         self.days = int(conf.get(CONF_DAYS))
-        self.ssl = "s" if conf.get(CONF_SSL) else ""
+        self.ssl = "https" if conf.get(CONF_SSL) else "http"
         self._state = None
         self.data = []
-        self._tz = timezone(str(hass.config.time_zone))
         self.type = sensor_type
         self._name = SENSOR_TYPES[self.type][0]
         if self.type == "diskspace":
@@ -143,7 +142,7 @@ class RadarrSensor(Entity):
         return self._unit
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the sensor."""
         attributes = {}
         if self.type == "upcoming":
@@ -177,8 +176,9 @@ class RadarrSensor(Entity):
 
     def update(self):
         """Update the data for the sensor."""
-        start = get_date(self._tz)
-        end = get_date(self._tz, self.days)
+        time_zone = dt_util.get_time_zone(self.hass.config.time_zone)
+        start = get_date(time_zone)
+        end = get_date(time_zone, self.days)
         try:
             res = requests.get(
                 ENDPOINTS[self.type].format(
@@ -193,7 +193,7 @@ class RadarrSensor(Entity):
             self._state = None
             return
 
-        if res.status_code == 200:
+        if res.status_code == HTTP_OK:
             if self.type in ["upcoming", "movies", "commands"]:
                 self.data = res.json()
                 self._state = len(self.data)

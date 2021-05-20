@@ -4,7 +4,7 @@ import logging
 import vlc
 import voluptuous as vol
 
-from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerDevice
+from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerEntity
 from homeassistant.components.media_player.const import (
     MEDIA_TYPE_MUSIC,
     SUPPORT_PAUSE,
@@ -47,7 +47,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     )
 
 
-class VlcDevice(MediaPlayerDevice):
+class VlcDevice(MediaPlayerEntity):
     """Representation of a vlc player."""
 
     def __init__(self, name, arguments):
@@ -159,7 +159,7 @@ class VlcDevice(MediaPlayerDevice):
 
     def play_media(self, media_type, media_id, **kwargs):
         """Play media from a URL or file."""
-        if not media_type == MEDIA_TYPE_MUSIC:
+        if media_type != MEDIA_TYPE_MUSIC:
             _LOGGER.error(
                 "Invalid media type %s. Only %s is supported",
                 media_type,

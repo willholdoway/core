@@ -15,15 +15,16 @@ ATTR_DISCOVER_DEVICES = "devices"
 ATTR_PARAM = "param"
 ATTR_CHANNEL = "channel"
 ATTR_ADDRESS = "address"
+ATTR_DEVICE_TYPE = "device_type"
 ATTR_VALUE = "value"
 ATTR_VALUE_TYPE = "value_type"
 ATTR_INTERFACE = "interface"
 ATTR_ERRORCODE = "error"
 ATTR_MESSAGE = "message"
-ATTR_TIME = "time"
 ATTR_UNIQUE_ID = "unique_id"
 ATTR_PARAMSET_KEY = "paramset_key"
 ATTR_PARAMSET = "paramset"
+ATTR_RX_MODE = "rx_mode"
 ATTR_DISCOVERY_TYPE = "discovery_type"
 ATTR_LOW_BAT = "LOW_BAT"
 ATTR_LOWBAT = "LOWBAT"
@@ -44,6 +45,7 @@ HM_DEVICE_TYPES = {
         "Switch",
         "SwitchPowermeter",
         "IOSwitch",
+        "IOSwitchNoInhibit",
         "IPSwitch",
         "RFSiren",
         "IPSwitchPowermeter",
@@ -55,6 +57,10 @@ HM_DEVICE_TYPES = {
         "IPKeySwitch",
         "IPKeySwitchLevel",
         "IPMultiIO",
+        "IPWSwitch",
+        "IOSwitchWireless",
+        "IPWIODevice",
+        "IPSwitchBattery",
     ],
     DISCOVER_LIGHTS: [
         "Dimmer",
@@ -64,6 +70,7 @@ HM_DEVICE_TYPES = {
         "ColorEffectLight",
         "IPKeySwitchLevel",
         "ColdWarmDimmer",
+        "IPWDimmer",
     ],
     DISCOVER_SENSORS: [
         "SwitchPowermeter",
@@ -106,6 +113,15 @@ HM_DEVICE_TYPES = {
         "MotionIPV2",
         "IPMultiIO",
         "IPThermostatWall2",
+        "IPRemoteMotionV2",
+        "HBUNISenWEA",
+        "PresenceIPW",
+        "IPRainSensor",
+        "ValveBox",
+        "IPKeyBlind",
+        "IPKeyBlindTilt",
+        "IPLanRouter",
+        "TempModuleSTE2",
     ],
     DISCOVER_CLIMATE: [
         "Thermostat",
@@ -145,8 +161,22 @@ HM_DEVICE_TYPES = {
         "TiltIP",
         "IPShutterContactSabotage",
         "IPContact",
+        "IPRemoteMotionV2",
+        "IPWInputDevice",
+        "IPWMotionDection",
+        "IPAlarmSensor",
+        "IPRainSensor",
+        "IPLanRouter",
     ],
-    DISCOVER_COVER: ["Blind", "KeyBlind", "IPKeyBlind", "IPKeyBlindTilt"],
+    DISCOVER_COVER: [
+        "Blind",
+        "KeyBlind",
+        "IPKeyBlind",
+        "IPKeyBlindTilt",
+        "IPGarage",
+        "IPKeyBlindMulti",
+        "IPWKeyBlindMulti",
+    ],
     DISCOVER_LOCKS: ["KeyMatic"],
 }
 
@@ -205,8 +235,6 @@ DATA_CONF = "homematic_conf"
 CONF_INTERFACES = "interfaces"
 CONF_LOCAL_IP = "local_ip"
 CONF_LOCAL_PORT = "local_port"
-CONF_PORT = "port"
-CONF_PATH = "path"
 CONF_CALLBACK_IP = "callback_ip"
 CONF_CALLBACK_PORT = "callback_port"
 CONF_RESOLVENAMES = "resolvenames"

@@ -1,111 +1,116 @@
 """Test Axis component setup process."""
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from homeassistant.components import axis
+from homeassistant.components.axis.const import CONF_MODEL, DOMAIN as AXIS_DOMAIN
+from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
+from homeassistant.const import (
+    CONF_DEVICE,
+    CONF_HOST,
+    CONF_MAC,
+    CONF_NAME,
+    CONF_PASSWORD,
+    CONF_PORT,
+    CONF_USERNAME,
+)
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.device_registry import format_mac
 from homeassistant.setup import async_setup_component
 
 from .test_device import MAC, setup_axis_integration
 
-from tests.common import MockConfigEntry, mock_coro
-
-
-async def test_setup_device_already_configured(hass):
-    """Test already configured device does not configure a second."""
-    with patch.object(hass, "config_entries") as mock_config_entries:
-
-        assert await async_setup_component(
-            hass,
-            axis.DOMAIN,
-            {axis.DOMAIN: {"device_name": {axis.CONF_HOST: "1.2.3.4"}}},
-        )
-
-    assert not mock_config_entries.flow.mock_calls
+from tests.common import MockConfigEntry
 
 
 async def test_setup_no_config(hass):
     """Test setup without configuration."""
-    assert await async_setup_component(hass, axis.DOMAIN, {})
-    assert axis.DOMAIN not in hass.data
+    assert await async_setup_component(hass, AXIS_DOMAIN, {})
+    assert AXIS_DOMAIN not in hass.data
 
 
 async def test_setup_entry(hass):
     """Test successful setup of entry."""
     await setup_axis_integration(hass)
-    assert len(hass.data[axis.DOMAIN]) == 1
-    assert MAC in hass.data[axis.DOMAIN]
+    assert len(hass.data[AXIS_DOMAIN]) == 1
+    assert format_mac(MAC) in hass.data[AXIS_DOMAIN]
 
 
 async def test_setup_entry_fails(hass):
     """Test successful setup of entry."""
     config_entry = MockConfigEntry(
-        domain=axis.DOMAIN, data={axis.CONF_MAC: "0123"}, version=2
+        domain=AXIS_DOMAIN, data={CONF_MAC: "0123"}, version=3
     )
     config_entry.add_to_hass(hass)
 
     mock_device = Mock()
-    mock_device.async_setup.return_value = mock_coro(False)
+    mock_device.async_setup = AsyncMock(return_value=False)
 
     with patch.object(axis, "AxisNetworkDevice") as mock_device_class:
         mock_device_class.return_value = mock_device
 
         assert not await hass.config_entries.async_setup(config_entry.entry_id)
 
-    assert not hass.data[axis.DOMAIN]
+    assert not hass.data[AXIS_DOMAIN]
 
 
 async def test_unload_entry(hass):
     """Test successful unload of entry."""
-    device = await setup_axis_integration(hass)
-    assert hass.data[axis.DOMAIN]
+    config_entry = await setup_axis_integration(hass)
+    device = hass.data[AXIS_DOMAIN][config_entry.unique_id]
+    assert hass.data[AXIS_DOMAIN]
 
     assert await hass.config_entries.async_unload(device.config_entry.entry_id)
-    assert not hass.data[axis.DOMAIN]
-
-
-async def test_populate_options(hass):
-    """Test successful populate options."""
-    device = await setup_axis_integration(hass, options=None)
-
-    assert device.config_entry.options == {
-        axis.CONF_CAMERA: True,
-        axis.CONF_EVENTS: True,
-        axis.CONF_TRIGGER_TIME: axis.DEFAULT_TRIGGER_TIME,
-    }
+    assert not hass.data[AXIS_DOMAIN]
 
 
 async def test_migrate_entry(hass):
     """Test successful migration of entry data."""
     legacy_config = {
-        axis.CONF_DEVICE: {
-            axis.CONF_HOST: "1.2.3.4",
-            axis.CONF_USERNAME: "username",
-            axis.CONF_PASSWORD: "password",
-            axis.CONF_PORT: 80,
+        CONF_DEVICE: {
+            CONF_HOST: "1.2.3.4",
+            CONF_USERNAME: "username",
+            CONF_PASSWORD: "password",
+            CONF_PORT: 80,
         },
-        axis.CONF_MAC: "mac",
-        axis.device.CONF_MODEL: "model",
-        axis.device.CONF_NAME: "name",
+        CONF_MAC: "00408C123456",
+        CONF_MODEL: "model",
+        CONF_NAME: "name",
     }
-    entry = MockConfigEntry(domain=axis.DOMAIN, data=legacy_config)
+    entry = MockConfigEntry(domain=AXIS_DOMAIN, data=legacy_config)
 
     assert entry.data == legacy_config
     assert entry.version == 1
+    assert not entry.unique_id
+
+    # Create entity entry to migrate to new unique ID
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        BINARY_SENSOR_DOMAIN,
+        AXIS_DOMAIN,
+        "00408C123456-vmd4-0",
+        suggested_object_id="vmd4",
+        config_entry=entry,
+    )
 
     await entry.async_migrate(hass)
 
     assert entry.data == {
-        axis.CONF_DEVICE: {
-            axis.CONF_HOST: "1.2.3.4",
-            axis.CONF_USERNAME: "username",
-            axis.CONF_PASSWORD: "password",
-            axis.CONF_PORT: 80,
+        CONF_DEVICE: {
+            CONF_HOST: "1.2.3.4",
+            CONF_USERNAME: "username",
+            CONF_PASSWORD: "password",
+            CONF_PORT: 80,
         },
-        axis.CONF_HOST: "1.2.3.4",
-        axis.CONF_USERNAME: "username",
-        axis.CONF_PASSWORD: "password",
-        axis.CONF_PORT: 80,
-        axis.CONF_MAC: "mac",
-        axis.device.CONF_MODEL: "model",
-        axis.device.CONF_NAME: "name",
+        CONF_HOST: "1.2.3.4",
+        CONF_USERNAME: "username",
+        CONF_PASSWORD: "password",
+        CONF_PORT: 80,
+        CONF_MAC: "00408C123456",
+        CONF_MODEL: "model",
+        CONF_NAME: "name",
     }
-    assert entry.version == 2
+    assert entry.version == 2  # Keep version to support rollbacking
+    assert entry.unique_id == "00:40:8c:12:34:56"
+
+    vmd4_entity = registry.async_get("binary_sensor.vmd4")
+    assert vmd4_entity.unique_id == "00:40:8c:12:34:56-vmd4-0"

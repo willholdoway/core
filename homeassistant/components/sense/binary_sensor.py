@@ -1,7 +1,7 @@
 """Support for monitoring a Sense energy sensor device."""
 import logging
 
-from homeassistant.components.binary_sensor import BinarySensorDevice
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.const import ATTR_ATTRIBUTION, DEVICE_CLASS_POWER
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -61,7 +61,7 @@ def sense_to_mdi(sense_icon):
     return "mdi:{}".format(MDI_ICONS.get(sense_icon, "power-plug"))
 
 
-class SenseDevice(BinarySensorDevice):
+class SenseDevice(BinarySensorEntity):
     """Implementation of a Sense energy device binary sensor."""
 
     def __init__(self, sense_devices_data, device, sense_monitor_id):
@@ -72,7 +72,6 @@ class SenseDevice(BinarySensorDevice):
         self._unique_id = f"{sense_monitor_id}-{self._id}"
         self._icon = sense_to_mdi(device["icon"])
         self._sense_devices_data = sense_devices_data
-        self._undo_dispatch_subscription = None
         self._state = None
         self._available = False
 
@@ -102,7 +101,7 @@ class SenseDevice(BinarySensorDevice):
         return self._id
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return {ATTR_ATTRIBUTION: ATTRIBUTION}
 
@@ -123,20 +122,20 @@ class SenseDevice(BinarySensorDevice):
 
     async def async_added_to_hass(self):
         """Register callbacks."""
-        self._undo_dispatch_subscription = async_dispatcher_connect(
-            self.hass,
-            f"{SENSE_DEVICE_UPDATE}-{self._sense_monitor_id}",
-            self._async_update_from_data,
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{SENSE_DEVICE_UPDATE}-{self._sense_monitor_id}",
+                self._async_update_from_data,
+            )
         )
-
-    async def async_will_remove_from_hass(self):
-        """Undo subscription."""
-        if self._undo_dispatch_subscription:
-            self._undo_dispatch_subscription()
 
     @callback
     def _async_update_from_data(self):
         """Get the latest data, update state. Must not do I/O."""
+        new_state = bool(self._sense_devices_data.get_device_by_id(self._id))
+        if self._available and self._state == new_state:
+            return
         self._available = True
-        self._state = bool(self._sense_devices_data.get_device_by_id(self._id))
+        self._state = new_state
         self.async_write_ha_state()

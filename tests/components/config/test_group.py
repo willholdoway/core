@@ -1,6 +1,6 @@
 """Test Group config panel."""
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from homeassistant.bootstrap import async_setup_component
 from homeassistant.components import config
@@ -50,7 +50,7 @@ async def test_update_device_config(hass, hass_client):
         """Mock writing data."""
         written.append(data)
 
-    mock_call = MagicMock()
+    mock_call = AsyncMock()
 
     with patch("homeassistant.components.config._read", mock_read), patch(
         "homeassistant.components.config._write", mock_write

@@ -1,15 +1,15 @@
 """Tests for the IPP sensor platform."""
 from datetime import datetime
-
-from asynctest import patch
+from unittest.mock import patch
 
 from homeassistant.components.ipp.const import DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from homeassistant.const import ATTR_ICON, ATTR_UNIT_OF_MEASUREMENT, UNIT_PERCENTAGE
+from homeassistant.const import ATTR_ICON, ATTR_UNIT_OF_MEASUREMENT, PERCENTAGE
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from tests.components.ipp import init_integration
+from tests.components.ipp import init_integration, mock_connection
 from tests.test_util.aiohttp import AiohttpClientMocker
 
 
@@ -17,8 +17,10 @@ async def test_sensors(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
 ) -> None:
     """Test the creation and values of the IPP sensors."""
+    mock_connection(aioclient_mock)
+
     entry = await init_integration(hass, aioclient_mock, skip_setup=True)
-    registry = await hass.helpers.entity_registry.async_get_registry()
+    registry = er.async_get(hass)
 
     # Pre-create registry entries for disabled by default sensors
     registry.async_get_or_create(
@@ -42,31 +44,31 @@ async def test_sensors(
     state = hass.states.get("sensor.epson_xp_6000_series_black_ink")
     assert state
     assert state.attributes.get(ATTR_ICON) == "mdi:water"
-    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is UNIT_PERCENTAGE
+    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is PERCENTAGE
     assert state.state == "58"
 
     state = hass.states.get("sensor.epson_xp_6000_series_photo_black_ink")
     assert state
     assert state.attributes.get(ATTR_ICON) == "mdi:water"
-    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is UNIT_PERCENTAGE
+    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is PERCENTAGE
     assert state.state == "98"
 
     state = hass.states.get("sensor.epson_xp_6000_series_cyan_ink")
     assert state
     assert state.attributes.get(ATTR_ICON) == "mdi:water"
-    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is UNIT_PERCENTAGE
+    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is PERCENTAGE
     assert state.state == "91"
 
     state = hass.states.get("sensor.epson_xp_6000_series_yellow_ink")
     assert state
     assert state.attributes.get(ATTR_ICON) == "mdi:water"
-    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is UNIT_PERCENTAGE
+    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is PERCENTAGE
     assert state.state == "95"
 
     state = hass.states.get("sensor.epson_xp_6000_series_magenta_ink")
     assert state
     assert state.attributes.get(ATTR_ICON) == "mdi:water"
-    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is UNIT_PERCENTAGE
+    assert state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) is PERCENTAGE
     assert state.state == "73"
 
     state = hass.states.get("sensor.epson_xp_6000_series_uptime")
@@ -85,7 +87,7 @@ async def test_disabled_by_default_sensors(
 ) -> None:
     """Test the disabled by default IPP sensors."""
     await init_integration(hass, aioclient_mock)
-    registry = await hass.helpers.entity_registry.async_get_registry()
+    registry = er.async_get(hass)
 
     state = hass.states.get("sensor.epson_xp_6000_series_uptime")
     assert state is None
@@ -93,4 +95,16 @@ async def test_disabled_by_default_sensors(
     entry = registry.async_get("sensor.epson_xp_6000_series_uptime")
     assert entry
     assert entry.disabled
-    assert entry.disabled_by == "integration"
+    assert entry.disabled_by == er.DISABLED_INTEGRATION
+
+
+async def test_missing_entry_unique_id(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """Test the unique_id of IPP sensor when printer is missing identifiers."""
+    entry = await init_integration(hass, aioclient_mock, uuid=None, unique_id=None)
+    registry = er.async_get(hass)
+
+    entity = registry.async_get("sensor.epson_xp_6000_series")
+    assert entity
+    assert entity.unique_id == f"{entry.entry_id}_printer"

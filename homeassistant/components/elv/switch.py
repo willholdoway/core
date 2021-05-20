@@ -4,7 +4,7 @@ import logging
 import pypca
 from serial import SerialException
 
-from homeassistant.components.switch import ATTR_CURRENT_POWER_W, SwitchDevice
+from homeassistant.components.switch import ATTR_CURRENT_POWER_W, SwitchEntity
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     pca.start_scan()
 
 
-class SmartPlugSwitch(SwitchDevice):
+class SmartPlugSwitch(SwitchEntity):
     """Representation of a PCA Smart Plug switch."""
 
     def __init__(self, pca, device_id):
@@ -74,7 +74,7 @@ class SmartPlugSwitch(SwitchDevice):
         self._pca.turn_off(self._device_id)
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the device."""
         return self._emeter_params
 

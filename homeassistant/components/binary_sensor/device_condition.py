@@ -1,5 +1,5 @@
 """Implement device conditions for binary sensor."""
-from typing import Dict, List
+from __future__ import annotations
 
 import voluptuous as vol
 
@@ -15,6 +15,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from . import (
     DEVICE_CLASS_BATTERY,
+    DEVICE_CLASS_BATTERY_CHARGING,
     DEVICE_CLASS_COLD,
     DEVICE_CLASS_CONNECTIVITY,
     DEVICE_CLASS_DOOR,
@@ -44,6 +45,8 @@ DEVICE_CLASS_NONE = "none"
 
 CONF_IS_BAT_LOW = "is_bat_low"
 CONF_IS_NOT_BAT_LOW = "is_not_bat_low"
+CONF_IS_CHARGING = "is_charging"
+CONF_IS_NOT_CHARGING = "is_not_charging"
 CONF_IS_COLD = "is_cold"
 CONF_IS_NOT_COLD = "is_not_cold"
 CONF_IS_CONNECTED = "is_connected"
@@ -85,6 +88,7 @@ CONF_IS_NOT_OPEN = "is_not_open"
 
 IS_ON = [
     CONF_IS_BAT_LOW,
+    CONF_IS_CHARGING,
     CONF_IS_COLD,
     CONF_IS_CONNECTED,
     CONF_IS_GAS,
@@ -109,6 +113,7 @@ IS_ON = [
 
 IS_OFF = [
     CONF_IS_NOT_BAT_LOW,
+    CONF_IS_NOT_CHARGING,
     CONF_IS_NOT_COLD,
     CONF_IS_NOT_CONNECTED,
     CONF_IS_NOT_HOT,
@@ -135,6 +140,10 @@ ENTITY_CONDITIONS = {
     DEVICE_CLASS_BATTERY: [
         {CONF_TYPE: CONF_IS_BAT_LOW},
         {CONF_TYPE: CONF_IS_NOT_BAT_LOW},
+    ],
+    DEVICE_CLASS_BATTERY_CHARGING: [
+        {CONF_TYPE: CONF_IS_CHARGING},
+        {CONF_TYPE: CONF_IS_NOT_CHARGING},
     ],
     DEVICE_CLASS_COLD: [{CONF_TYPE: CONF_IS_COLD}, {CONF_TYPE: CONF_IS_NOT_COLD}],
     DEVICE_CLASS_CONNECTIVITY: [
@@ -196,9 +205,9 @@ CONDITION_SCHEMA = cv.DEVICE_CONDITION_BASE_SCHEMA.extend(
 
 async def async_get_conditions(
     hass: HomeAssistant, device_id: str
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     """List device conditions."""
-    conditions: List[Dict[str, str]] = []
+    conditions: list[dict[str, str]] = []
     entity_registry = await async_get_registry(hass)
     entries = [
         entry

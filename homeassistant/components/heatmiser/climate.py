@@ -1,6 +1,7 @@
 """Support for the PRT Heatmiser themostats using the V3 protocol."""
+from __future__ import annotations
+
 import logging
-from typing import List
 
 from heatmiserV3 import connection, heatmiser
 import voluptuous as vol
@@ -9,7 +10,7 @@ from homeassistant.components.climate import (
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
     PLATFORM_SCHEMA,
-    ClimateDevice,
+    ClimateEntity,
 )
 from homeassistant.components.climate.const import SUPPORT_TARGET_TEMPERATURE
 from homeassistant.const import (
@@ -64,7 +65,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     )
 
 
-class HeatmiserV3Thermostat(ClimateDevice):
+class HeatmiserV3Thermostat(ClimateEntity):
     """Representation of a HeatmiserV3 thermostat."""
 
     def __init__(self, therm, device, uh1):
@@ -103,7 +104,7 @@ class HeatmiserV3Thermostat(ClimateDevice):
         return self._hvac_mode
 
     @property
-    def hvac_modes(self) -> List[str]:
+    def hvac_modes(self) -> list[str]:
         """Return the list of available hvac operation modes.
 
         Need to be a subset of HVAC_MODES.

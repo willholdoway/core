@@ -2,6 +2,7 @@
 from datetime import timedelta
 import functools as ft
 import logging
+from typing import final
 
 import voluptuous as vol
 
@@ -128,8 +129,8 @@ async def async_unload_entry(hass, entry):
     return await hass.data[DOMAIN].async_unload_entry(entry)
 
 
-class WaterHeaterDevice(Entity):
-    """Representation of a water_heater device."""
+class WaterHeaterEntity(Entity):
+    """Base class for water heater entities."""
 
     @property
     def state(self):
@@ -162,6 +163,7 @@ class WaterHeaterDevice(Entity):
 
         return data
 
+    @final
     @property
     def state_attributes(self):
         """Return the optional state attributes."""
@@ -319,3 +321,15 @@ async def async_service_temperature_set(entity, service):
             kwargs[value] = temp
 
     await entity.async_set_temperature(**kwargs)
+
+
+class WaterHeaterDevice(WaterHeaterEntity):
+    """Representation of a water heater (for backwards compatibility)."""
+
+    def __init_subclass__(cls, **kwargs):
+        """Print deprecation warning."""
+        super().__init_subclass__(**kwargs)
+        _LOGGER.warning(
+            "WaterHeaterDevice is deprecated, modify %s to extend WaterHeaterEntity",
+            cls.__name__,
+        )

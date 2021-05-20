@@ -1,5 +1,5 @@
 """Support for StarLine lock."""
-from homeassistant.components.lock import LockDevice
+from homeassistant.components.lock import LockEntity
 
 from .account import StarlineAccount, StarlineDevice
 from .const import DOMAIN
@@ -8,7 +8,6 @@ from .entity import StarlineEntity
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the StarLine lock."""
-
     account: StarlineAccount = hass.data[DOMAIN][entry.entry_id]
     entities = []
     for device in account.api.devices.values():
@@ -19,7 +18,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities)
 
 
-class StarlineLock(StarlineEntity, LockDevice):
+class StarlineLock(StarlineEntity, LockEntity):
     """Representation of a StarLine lock."""
 
     def __init__(self, account: StarlineAccount, device: StarlineDevice):
@@ -32,7 +31,7 @@ class StarlineLock(StarlineEntity, LockDevice):
         return super().available and self._device.online
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the lock.
 
         Possible dictionary keys:

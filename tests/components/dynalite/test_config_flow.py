@@ -1,6 +1,7 @@
 """Test Dynalite config flow."""
 
-from asynctest import CoroutineMock, patch
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from homeassistant import config_entries
@@ -69,7 +70,7 @@ async def test_existing_update(hass):
     with patch(
         "homeassistant.components.dynalite.bridge.DynaliteDevices"
     ) as mock_dyn_dev:
-        mock_dyn_dev().async_setup = CoroutineMock(return_value=True)
+        mock_dyn_dev().async_setup = AsyncMock(return_value=True)
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         mock_dyn_dev().configure.assert_called_once()

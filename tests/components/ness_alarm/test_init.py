@@ -1,7 +1,7 @@
 """Tests for the ness_alarm component."""
 from enum import Enum
+from unittest.mock import MagicMock, patch
 
-from asynctest import MagicMock, patch
 import pytest
 
 from homeassistant.components import alarm_control_panel

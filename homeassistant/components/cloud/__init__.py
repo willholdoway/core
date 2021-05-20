@@ -1,12 +1,11 @@
 """Component to integrate the Home Assistant cloud."""
-import logging
-
 from hass_nabucasa import Cloud
 import voluptuous as vol
 
 from homeassistant.components.alexa import const as alexa_const
 from homeassistant.components.google_assistant import const as ga_c
 from homeassistant.const import (
+    CONF_DESCRIPTION,
     CONF_MODE,
     CONF_NAME,
     CONF_REGION,
@@ -43,8 +42,6 @@ from .const import (
 )
 from .prefs import CloudPreferences
 
-_LOGGER = logging.getLogger(__name__)
-
 DEFAULT_MODE = MODE_PROD
 
 SERVICE_REMOTE_CONNECT = "remote_connect"
@@ -53,7 +50,7 @@ SERVICE_REMOTE_DISCONNECT = "remote_disconnect"
 
 ALEXA_ENTITY_SCHEMA = vol.Schema(
     {
-        vol.Optional(alexa_const.CONF_DESCRIPTION): cv.string,
+        vol.Optional(CONF_DESCRIPTION): cv.string,
         vol.Optional(alexa_const.CONF_DISPLAY_CATEGORIES): cv.string,
         vol.Optional(CONF_NAME): cv.string,
     }
@@ -190,8 +187,6 @@ async def async_setup(hass, config):
     client = CloudClient(hass, prefs, websession, alexa_conf, google_conf)
     cloud = hass.data[DOMAIN] = Cloud(client, **kwargs)
 
-    await cloud.start()
-
     async def _shutdown(event):
         """Shutdown event."""
         await cloud.stop()
@@ -233,6 +228,7 @@ async def async_setup(hass, config):
 
     cloud.iot.register_on_connect(_on_connect)
 
+    await cloud.start()
     await http_api.async_setup(hass)
 
     account_link.async_setup(hass)

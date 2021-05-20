@@ -84,14 +84,22 @@ def main():
 
     print("Running script/translations_develop to pick up new translation strings.")
     subprocess.run(
-        ["script/translations_develop", "--integration", info.domain], **pipe_null
+        [
+            "python",
+            "-m",
+            "script.translations",
+            "develop",
+            "--integration",
+            info.domain,
+        ],
+        **pipe_null,
     )
     print()
 
     if args.develop:
         print("Running tests")
         print(f"$ pytest -vvv tests/components/{info.domain}")
-        subprocess.run(["pytest", "-vvv", "tests/components/{info.domain}"])
+        subprocess.run(["pytest", "-vvv", f"tests/components/{info.domain}"])
         print()
 
     docs.print_relevant_docs(args.template, info)

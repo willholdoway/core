@@ -3,13 +3,14 @@ from datetime import datetime, timedelta
 import logging
 
 import ns_api
+from ns_api import RequestParametersError
 import requests
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import ATTR_ATTRIBUTION, CONF_API_KEY, CONF_NAME
+from homeassistant.exceptions import PlatformNotReady
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,13 +48,17 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the departure sensor."""
 
     nsapi = ns_api.NSAPI(config[CONF_API_KEY])
+
     try:
         stations = nsapi.get_stations()
     except (
         requests.exceptions.ConnectionError,
         requests.exceptions.HTTPError,
     ) as error:
-        _LOGGER.error("Couldn't fetch stations, API key correct?: %s", error)
+        _LOGGER.error("Could not connect to the internet: %s", error)
+        raise PlatformNotReady() from error
+    except RequestParametersError as error:
+        _LOGGER.error("Could not fetch stations, please check configuration: %s", error)
         return
 
     sensors = []
@@ -83,12 +88,12 @@ def valid_stations(stations, given_stations):
         if station is None:
             continue
         if not any(s.code == station.upper() for s in stations):
-            _LOGGER.warning("Station '%s' is not a valid station.", station)
+            _LOGGER.warning("Station '%s' is not a valid station", station)
             return False
     return True
 
 
-class NSDepartureSensor(Entity):
+class NSDepartureSensor(SensorEntity):
     """Implementation of a NS Departure Sensor."""
 
     def __init__(self, nsapi, name, departure, heading, via, time):
@@ -118,7 +123,7 @@ class NSDepartureSensor(Entity):
         return self._state
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         if not self._trips:
             return
@@ -142,7 +147,6 @@ class NSDepartureSensor(Entity):
             "arrival_platform_planned": self._trips[0].arrival_platform_planned,
             "arrival_platform_actual": self._trips[0].arrival_platform_actual,
             "next": None,
-            "punctuality": None,
             "status": self._trips[0].status.lower(),
             "transfers": self._trips[0].nr_transfers,
             "route": route,
@@ -190,10 +194,6 @@ class NSDepartureSensor(Entity):
             and attributes["arrival_time_planned"] != attributes["arrival_time_actual"]
         ):
             attributes["arrival_delay"] = True
-
-        # Punctuality attributes
-        if self._trips[0].punctuality is not None:
-            attributes["punctuality"] = self._trips[0].punctuality
 
         # Next attributes
         if len(self._trips) > 1:

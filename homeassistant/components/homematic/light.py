@@ -1,6 +1,4 @@
 """Support for Homematic lights."""
-import logging
-
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP,
@@ -11,13 +9,12 @@ from homeassistant.components.light import (
     SUPPORT_COLOR,
     SUPPORT_COLOR_TEMP,
     SUPPORT_EFFECT,
-    Light,
+    SUPPORT_TRANSITION,
+    LightEntity,
 )
 
 from .const import ATTR_DISCOVER_DEVICES
 from .entity import HMDevice
-
-_LOGGER = logging.getLogger(__name__)
 
 SUPPORT_HOMEMATIC = SUPPORT_BRIGHTNESS
 
@@ -35,7 +32,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(devices, True)
 
 
-class HMLight(HMDevice, Light):
+class HMLight(HMDevice, LightEntity):
     """Representation of a Homematic light."""
 
     @property
@@ -57,7 +54,8 @@ class HMLight(HMDevice, Light):
     @property
     def supported_features(self):
         """Flag supported features."""
-        features = SUPPORT_BRIGHTNESS
+        features = SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION
+
         if "COLOR" in self._hmdevice.WRITENODE:
             features |= SUPPORT_COLOR
         if "PROGRAM" in self._hmdevice.WRITENODE:
@@ -99,7 +97,7 @@ class HMLight(HMDevice, Light):
     def turn_on(self, **kwargs):
         """Turn the light on and/or change color or color effect settings."""
         if ATTR_TRANSITION in kwargs:
-            self._hmdevice.setValue("RAMP_TIME", kwargs[ATTR_TRANSITION])
+            self._hmdevice.setValue("RAMP_TIME", kwargs[ATTR_TRANSITION], self._channel)
 
         if ATTR_BRIGHTNESS in kwargs and self._state == "LEVEL":
             percent_bright = float(kwargs[ATTR_BRIGHTNESS]) / 255
@@ -111,7 +109,7 @@ class HMLight(HMDevice, Light):
         ):
             self._hmdevice.on(self._channel)
 
-        if ATTR_HS_COLOR in kwargs:
+        if ATTR_HS_COLOR in kwargs and self.supported_features & SUPPORT_COLOR:
             self._hmdevice.set_hs_color(
                 hue=kwargs[ATTR_HS_COLOR][0] / 360.0,
                 saturation=kwargs[ATTR_HS_COLOR][1] / 100.0,
@@ -127,6 +125,9 @@ class HMLight(HMDevice, Light):
 
     def turn_off(self, **kwargs):
         """Turn the light off."""
+        if ATTR_TRANSITION in kwargs:
+            self._hmdevice.setValue("RAMP_TIME", kwargs[ATTR_TRANSITION], self._channel)
+
         self._hmdevice.off(self._channel)
 
     def _init_data_struct(self):

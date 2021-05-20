@@ -1,12 +1,14 @@
 """Sensor to collect the reference daily prices of electricity ('PVPC') in Spain."""
+from __future__ import annotations
+
 import logging
 from random import randint
-from typing import Optional
 
 from aiopvpc import PVPCData
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_NAME
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.const import CONF_NAME, CURRENCY_EURO, ENERGY_KILO_WATT_HOUR
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_change
@@ -19,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 ATTR_PRICE = "price"
 ICON = "mdi:currency-eur"
-UNIT = "€/kWh"
+UNIT = f"{CURRENCY_EURO}/{ENERGY_KILO_WATT_HOUR}"
 
 _DEFAULT_TIMEOUT = 10
 
@@ -41,7 +43,7 @@ async def async_setup_entry(
     )
 
 
-class ElecPriceSensor(RestoreEntity):
+class ElecPriceSensor(RestoreEntity, SensorEntity):
     """Class to hold the prices of electricity as a sensor."""
 
     unit_of_measurement = UNIT
@@ -78,7 +80,7 @@ class ElecPriceSensor(RestoreEntity):
         random_minute = randint(1, 29)
         mins_update = [random_minute, random_minute + 30]
         self._price_tracker = async_track_time_change(
-            self.hass, self.async_update_prices, second=[0], minute=mins_update,
+            self.hass, self.async_update_prices, second=[0], minute=mins_update
         )
         _LOGGER.debug(
             "Setup of price sensor %s (%s) with tariff '%s', "
@@ -92,7 +94,7 @@ class ElecPriceSensor(RestoreEntity):
         self.update_current_price(dt_util.utcnow())
 
     @property
-    def unique_id(self) -> Optional[str]:
+    def unique_id(self) -> str | None:
         """Return a unique ID."""
         return self._unique_id
 
@@ -112,7 +114,7 @@ class ElecPriceSensor(RestoreEntity):
         return self._pvpc_data.state_available
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return self._pvpc_data.attributes
 

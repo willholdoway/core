@@ -1,6 +1,7 @@
 """Tests for the WLED switch platform."""
-import aiohttp
-from asynctest.mock import patch
+from unittest.mock import patch
+
+from wled import WLEDConnectionError
 
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.components.wled.const import (
@@ -19,6 +20,7 @@ from homeassistant.const import (
     STATE_UNAVAILABLE,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from tests.components.wled import init_integration
 from tests.test_util.aiohttp import AiohttpClientMocker
@@ -30,7 +32,7 @@ async def test_switch_state(
     """Test the creation and values of the WLED switches."""
     await init_integration(hass, aioclient_mock)
 
-    entity_registry = await hass.helpers.entity_registry.async_get_registry()
+    entity_registry = er.async_get(hass)
 
     state = hass.states.get("switch.wled_rgb_light_nightlight")
     assert state
@@ -142,7 +144,7 @@ async def test_switch_error(
     aioclient_mock.post("http://192.168.1.123:80/json/state", text="", status=400)
     await init_integration(hass, aioclient_mock)
 
-    with patch("homeassistant.components.wled.WLEDDataUpdateCoordinator.async_refresh"):
+    with patch("homeassistant.components.wled.WLED.update"):
         await hass.services.async_call(
             SWITCH_DOMAIN,
             SERVICE_TURN_ON,
@@ -160,10 +162,11 @@ async def test_switch_connection_error(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
 ) -> None:
     """Test error handling of the WLED switches."""
-    aioclient_mock.post("http://192.168.1.123:80/json/state", exc=aiohttp.ClientError)
     await init_integration(hass, aioclient_mock)
 
-    with patch("homeassistant.components.wled.WLEDDataUpdateCoordinator.async_refresh"):
+    with patch("homeassistant.components.wled.WLED.update"), patch(
+        "homeassistant.components.wled.WLED.nightlight", side_effect=WLEDConnectionError
+    ):
         await hass.services.async_call(
             SWITCH_DOMAIN,
             SERVICE_TURN_ON,

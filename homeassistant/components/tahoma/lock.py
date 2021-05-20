@@ -2,7 +2,7 @@
 from datetime import timedelta
 import logging
 
-from homeassistant.components.lock import LockDevice
+from homeassistant.components.lock import LockEntity
 from homeassistant.const import ATTR_BATTERY_LEVEL, STATE_LOCKED, STATE_UNLOCKED
 
 from . import DOMAIN as TAHOMA_DOMAIN, TahomaDevice
@@ -24,7 +24,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(devices, True)
 
 
-class TahomaLock(TahomaDevice, LockDevice):
+class TahomaLock(TahomaDevice, LockEntity):
     """Representation a Tahoma lock."""
 
     def __init__(self, tahoma_device, controller):
@@ -78,12 +78,12 @@ class TahomaLock(TahomaDevice, LockDevice):
         return self._lock_status == STATE_LOCKED
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the lock state attributes."""
         attr = {
             ATTR_BATTERY_LEVEL: self._battery_level,
         }
-        super_attr = super().device_state_attributes
+        super_attr = super().extra_state_attributes
         if super_attr is not None:
             attr.update(super_attr)
         return attr

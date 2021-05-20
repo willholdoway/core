@@ -1,7 +1,8 @@
 """Support for IGN Sismologia (Earthquakes) Feeds."""
+from __future__ import annotations
+
 from datetime import timedelta
 import logging
-from typing import Optional
 
 from georss_ign_sismologia_client import IgnSismologiaFeedManager
 import voluptuous as vol
@@ -14,6 +15,7 @@ from homeassistant.const import (
     CONF_RADIUS,
     CONF_SCAN_INTERVAL,
     EVENT_HOMEASSISTANT_START,
+    LENGTH_KILOMETERS,
 )
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
@@ -33,7 +35,6 @@ CONF_MINIMUM_MAGNITUDE = "minimum_magnitude"
 
 DEFAULT_MINIMUM_MAGNITUDE = 0.0
 DEFAULT_RADIUS_IN_KM = 50.0
-DEFAULT_UNIT_OF_MEASUREMENT = "km"
 
 SCAN_INTERVAL = timedelta(minutes=5)
 
@@ -46,7 +47,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_RADIUS, default=DEFAULT_RADIUS_IN_KM): vol.Coerce(float),
         vol.Optional(
             CONF_MINIMUM_MAGNITUDE, default=DEFAULT_MINIMUM_MAGNITUDE
-        ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+        ): cv.positive_float,
     }
 )
 
@@ -165,7 +166,7 @@ class IgnSismologiaLocationEvent(GeolocationEvent):
         """Remove this entity."""
         self._remove_signal_delete()
         self._remove_signal_update()
-        self.hass.async_create_task(self.async_remove())
+        self.hass.async_create_task(self.async_remove(force_remove=True))
 
     @callback
     def _update_callback(self):
@@ -207,7 +208,7 @@ class IgnSismologiaLocationEvent(GeolocationEvent):
         return SOURCE
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """Return the name of the entity."""
         if self._magnitude and self._region:
             return f"M {self._magnitude:.1f} - {self._region}"
@@ -218,27 +219,27 @@ class IgnSismologiaLocationEvent(GeolocationEvent):
         return self._title
 
     @property
-    def distance(self) -> Optional[float]:
+    def distance(self) -> float | None:
         """Return distance value of this external event."""
         return self._distance
 
     @property
-    def latitude(self) -> Optional[float]:
+    def latitude(self) -> float | None:
         """Return latitude value of this external event."""
         return self._latitude
 
     @property
-    def longitude(self) -> Optional[float]:
+    def longitude(self) -> float | None:
         """Return longitude value of this external event."""
         return self._longitude
 
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
-        return DEFAULT_UNIT_OF_MEASUREMENT
+        return LENGTH_KILOMETERS
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the device state attributes."""
         attributes = {}
         for key, value in (

@@ -4,7 +4,7 @@ import logging
 from deluge_client import DelugeRPCClient, FailedToReconnectException
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import (
     CONF_HOST,
     CONF_MONITORED_VARIABLES,
@@ -17,7 +17,6 @@ from homeassistant.const import (
 )
 from homeassistant.exceptions import PlatformNotReady
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 
 _LOGGER = logging.getLogger(__name__)
 _THROTTLED_REFRESH = None
@@ -49,18 +48,18 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Deluge sensors."""
 
-    name = config.get(CONF_NAME)
-    host = config.get(CONF_HOST)
-    username = config.get(CONF_USERNAME)
-    password = config.get(CONF_PASSWORD)
-    port = config.get(CONF_PORT)
+    name = config[CONF_NAME]
+    host = config[CONF_HOST]
+    username = config[CONF_USERNAME]
+    password = config[CONF_PASSWORD]
+    port = config[CONF_PORT]
 
     deluge_api = DelugeRPCClient(host, port, username, password)
     try:
         deluge_api.connect()
-    except ConnectionRefusedError:
+    except ConnectionRefusedError as err:
         _LOGGER.error("Connection to Deluge Daemon failed")
-        raise PlatformNotReady
+        raise PlatformNotReady from err
     dev = []
     for variable in config[CONF_MONITORED_VARIABLES]:
         dev.append(DelugeSensor(variable, deluge_api, name))
@@ -68,7 +67,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(dev)
 
 
-class DelugeSensor(Entity):
+class DelugeSensor(SensorEntity):
     """Representation of a Deluge sensor."""
 
     def __init__(self, sensor_type, deluge_client, client_name):

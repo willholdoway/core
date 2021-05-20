@@ -6,10 +6,15 @@ from aiohttp.hdrs import USER_AGENT
 import requests
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import ATTR_ATTRIBUTION, CONF_API_KEY, CONF_EMAIL
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
+from homeassistant.const import (
+    ATTR_ATTRIBUTION,
+    CONF_API_KEY,
+    CONF_EMAIL,
+    HTTP_NOT_FOUND,
+    HTTP_OK,
+)
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import track_point_in_time
 from homeassistant.util import Throttle
 import homeassistant.util.dt as dt_util
@@ -48,7 +53,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(devices)
 
 
-class HaveIBeenPwnedSensor(Entity):
+class HaveIBeenPwnedSensor(SensorEntity):
     """Implementation of a HaveIBeenPwned sensor."""
 
     def __init__(self, data, email):
@@ -74,7 +79,7 @@ class HaveIBeenPwnedSensor(Entity):
         return self._state
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the attributes of the sensor."""
         val = {ATTR_ATTRIBUTION: ATTRIBUTION}
         if self._email not in self._data.data:
@@ -158,7 +163,7 @@ class HaveIBeenPwnedData:
             _LOGGER.error("Failed fetching data for %s", self._email)
             return
 
-        if req.status_code == 200:
+        if req.status_code == HTTP_OK:
             self.data[self._email] = sorted(
                 req.json(), key=lambda k: k["AddedDate"], reverse=True
             )
@@ -167,7 +172,7 @@ class HaveIBeenPwnedData:
             # the forced updates try this current email again
             self.set_next_email()
 
-        elif req.status_code == 404:
+        elif req.status_code == HTTP_NOT_FOUND:
             self.data[self._email] = []
 
             # only goto next email if we had data so that

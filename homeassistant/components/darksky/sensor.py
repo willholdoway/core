@@ -6,7 +6,11 @@ import forecastio
 from requests.exceptions import ConnectionError as ConnectError, HTTPError, Timeout
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import (
+    DEVICE_CLASS_TEMPERATURE,
+    PLATFORM_SCHEMA,
+    SensorEntity,
+)
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
     CONF_API_KEY,
@@ -15,15 +19,20 @@ from homeassistant.const import (
     CONF_MONITORED_CONDITIONS,
     CONF_NAME,
     CONF_SCAN_INTERVAL,
+    DEGREE,
+    LENGTH_CENTIMETERS,
+    LENGTH_KILOMETERS,
+    PERCENTAGE,
+    PRECIPITATION_MILLIMETERS_PER_HOUR,
+    PRESSURE_MBAR,
     SPEED_KILOMETERS_PER_HOUR,
     SPEED_METERS_PER_SECOND,
     SPEED_MILES_PER_HOUR,
-    TIME_HOURS,
-    UNIT_PERCENTAGE,
-    UNIT_UV_INDEX,
+    TEMP_CELSIUS,
+    TEMP_FAHRENHEIT,
+    UV_INDEX,
 )
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,21 +83,21 @@ SENSOR_TYPES = {
     ],
     "nearest_storm_distance": [
         "Nearest Storm Distance",
-        "km",
+        LENGTH_KILOMETERS,
         "mi",
-        "km",
-        "km",
+        LENGTH_KILOMETERS,
+        LENGTH_KILOMETERS,
         "mi",
         "mdi:weather-lightning",
         ["currently"],
     ],
     "nearest_storm_bearing": [
         "Nearest Storm Bearing",
-        "°",
-        "°",
-        "°",
-        "°",
-        "°",
+        DEGREE,
+        DEGREE,
+        DEGREE,
+        DEGREE,
+        DEGREE,
         "mdi:weather-lightning",
         ["currently"],
     ],
@@ -104,61 +113,61 @@ SENSOR_TYPES = {
     ],
     "precip_intensity": [
         "Precip Intensity",
-        f"mm/{TIME_HOURS}",
+        PRECIPITATION_MILLIMETERS_PER_HOUR,
         "in",
-        f"mm/{TIME_HOURS}",
-        f"mm/{TIME_HOURS}",
-        f"mm/{TIME_HOURS}",
+        PRECIPITATION_MILLIMETERS_PER_HOUR,
+        PRECIPITATION_MILLIMETERS_PER_HOUR,
+        PRECIPITATION_MILLIMETERS_PER_HOUR,
         "mdi:weather-rainy",
         ["currently", "minutely", "hourly", "daily"],
     ],
     "precip_probability": [
         "Precip Probability",
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
         "mdi:water-percent",
         ["currently", "minutely", "hourly", "daily"],
     ],
     "precip_accumulation": [
         "Precip Accumulation",
-        "cm",
+        LENGTH_CENTIMETERS,
         "in",
-        "cm",
-        "cm",
-        "cm",
+        LENGTH_CENTIMETERS,
+        LENGTH_CENTIMETERS,
+        LENGTH_CENTIMETERS,
         "mdi:weather-snowy",
         ["hourly", "daily"],
     ],
     "temperature": [
         "Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["currently", "hourly"],
     ],
     "apparent_temperature": [
         "Apparent Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["currently", "hourly"],
     ],
     "dew_point": [
         "Dew Point",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["currently", "hourly", "daily"],
     ],
@@ -174,11 +183,11 @@ SENSOR_TYPES = {
     ],
     "wind_bearing": [
         "Wind Bearing",
-        "°",
-        "°",
-        "°",
-        "°",
-        "°",
+        DEGREE,
+        DEGREE,
+        DEGREE,
+        DEGREE,
+        DEGREE,
         "mdi:compass",
         ["currently", "hourly", "daily"],
     ],
@@ -194,40 +203,40 @@ SENSOR_TYPES = {
     ],
     "cloud_cover": [
         "Cloud Coverage",
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
         "mdi:weather-partly-cloudy",
         ["currently", "hourly", "daily"],
     ],
     "humidity": [
         "Humidity",
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
-        UNIT_PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
+        PERCENTAGE,
         "mdi:water-percent",
         ["currently", "hourly", "daily"],
     ],
     "pressure": [
         "Pressure",
-        "mbar",
-        "mbar",
-        "mbar",
-        "mbar",
-        "mbar",
+        PRESSURE_MBAR,
+        PRESSURE_MBAR,
+        PRESSURE_MBAR,
+        PRESSURE_MBAR,
+        PRESSURE_MBAR,
         "mdi:gauge",
         ["currently", "hourly", "daily"],
     ],
     "visibility": [
         "Visibility",
-        "km",
+        LENGTH_KILOMETERS,
         "mi",
-        "km",
-        "km",
+        LENGTH_KILOMETERS,
+        LENGTH_KILOMETERS,
         "mi",
         "mdi:eye",
         ["currently", "hourly", "daily"],
@@ -244,101 +253,101 @@ SENSOR_TYPES = {
     ],
     "apparent_temperature_max": [
         "Daily High Apparent Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["daily"],
     ],
     "apparent_temperature_high": [
         "Daytime High Apparent Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["daily"],
     ],
     "apparent_temperature_min": [
         "Daily Low Apparent Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["daily"],
     ],
     "apparent_temperature_low": [
         "Overnight Low Apparent Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["daily"],
     ],
     "temperature_max": [
         "Daily High Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["daily"],
     ],
     "temperature_high": [
         "Daytime High Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["daily"],
     ],
     "temperature_min": [
         "Daily Low Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["daily"],
     ],
     "temperature_low": [
         "Overnight Low Temperature",
-        "°C",
-        "°F",
-        "°C",
-        "°C",
-        "°C",
+        TEMP_CELSIUS,
+        TEMP_FAHRENHEIT,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
+        TEMP_CELSIUS,
         "mdi:thermometer",
         ["daily"],
     ],
     "precip_intensity_max": [
         "Daily Max Precip Intensity",
-        f"mm/{TIME_HOURS}",
+        PRECIPITATION_MILLIMETERS_PER_HOUR,
         "in",
-        f"mm/{TIME_HOURS}",
-        f"mm/{TIME_HOURS}",
-        f"mm/{TIME_HOURS}",
+        PRECIPITATION_MILLIMETERS_PER_HOUR,
+        PRECIPITATION_MILLIMETERS_PER_HOUR,
+        PRECIPITATION_MILLIMETERS_PER_HOUR,
         "mdi:thermometer",
         ["daily"],
     ],
     "uv_index": [
         "UV Index",
-        UNIT_UV_INDEX,
-        UNIT_UV_INDEX,
-        UNIT_UV_INDEX,
-        UNIT_UV_INDEX,
-        UNIT_UV_INDEX,
+        UV_INDEX,
+        UV_INDEX,
+        UV_INDEX,
+        UV_INDEX,
+        UV_INDEX,
         "mdi:weather-sunny",
         ["currently", "hourly", "daily"],
     ],
@@ -492,7 +501,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         units = "us"
 
     forecast_data = DarkSkyData(
-        api_key=config.get(CONF_API_KEY, None),
+        api_key=config.get(CONF_API_KEY),
         latitude=latitude,
         longitude=longitude,
         units=units,
@@ -538,7 +547,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(sensors, True)
 
 
-class DarkSkySensor(Entity):
+class DarkSkySensor(SensorEntity):
     """Implementation of a Dark Sky sensor."""
 
     def __init__(
@@ -606,7 +615,15 @@ class DarkSkySensor(Entity):
         return SENSOR_TYPES[self.type][6]
 
     @property
-    def device_state_attributes(self):
+    def device_class(self):
+        """Device class of the entity."""
+        if SENSOR_TYPES[self.type][1] == TEMP_CELSIUS:
+            return DEVICE_CLASS_TEMPERATURE
+
+        return None
+
+    @property
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return {ATTR_ATTRIBUTION: ATTRIBUTION}
 
@@ -694,7 +711,7 @@ class DarkSkySensor(Entity):
         return state
 
 
-class DarkSkyAlertSensor(Entity):
+class DarkSkyAlertSensor(SensorEntity):
     """Implementation of a Dark Sky sensor."""
 
     def __init__(self, forecast_data, sensor_type, name):
@@ -725,7 +742,7 @@ class DarkSkyAlertSensor(Entity):
         return "mdi:alert-circle-outline"
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return self._alerts
 
@@ -785,6 +802,7 @@ class DarkSkyData:
         self.longitude = longitude
         self.units = units
         self.language = language
+        self._connect_error = False
 
         self.data = None
         self.unit_system = None
@@ -812,8 +830,13 @@ class DarkSkyData:
                 units=self.units,
                 lang=self.language,
             )
+            if self._connect_error:
+                self._connect_error = False
+                _LOGGER.info("Reconnected to Dark Sky")
         except (ConnectError, HTTPError, Timeout, ValueError) as error:
-            _LOGGER.error("Unable to connect to Dark Sky: %s", error)
+            if not self._connect_error:
+                self._connect_error = True
+                _LOGGER.error("Unable to connect to Dark Sky: %s", error)
             self.data = None
         self.unit_system = self.data and self.data.json["flags"]["units"]
 

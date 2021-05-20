@@ -1,9 +1,11 @@
 """Provides functionality to interact with climate devices."""
+from __future__ import annotations
+
 from abc import abstractmethod
 from datetime import timedelta
 import functools as ft
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, final
 
 import voluptuous as vol
 
@@ -17,6 +19,7 @@ from homeassistant.const import (
     STATE_ON,
     TEMP_CELSIUS,
 )
+from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.config_validation import (  # noqa: F401
     PLATFORM_SCHEMA,
@@ -26,7 +29,7 @@ from homeassistant.helpers.config_validation import (  # noqa: F401
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.temperature import display_temp as show_temp
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType, ServiceDataType
+from homeassistant.helpers.typing import ConfigType, ServiceDataType
 from homeassistant.util.temperature import convert as convert_temperature
 
 from .const import (
@@ -100,8 +103,8 @@ SET_TEMPERATURE_SCHEMA = vol.All(
 )
 
 
-async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
-    """Set up climate devices."""
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up climate entities."""
     component = hass.data[DOMAIN] = EntityComponent(
         _LOGGER, DOMAIN, hass, SCAN_INTERVAL
     )
@@ -118,46 +121,54 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
         SERVICE_SET_PRESET_MODE,
         {vol.Required(ATTR_PRESET_MODE): cv.string},
         "async_set_preset_mode",
+        [SUPPORT_PRESET_MODE],
     )
     component.async_register_entity_service(
         SERVICE_SET_AUX_HEAT,
         {vol.Required(ATTR_AUX_HEAT): cv.boolean},
         async_service_aux_heat,
+        [SUPPORT_AUX_HEAT],
     )
     component.async_register_entity_service(
-        SERVICE_SET_TEMPERATURE, SET_TEMPERATURE_SCHEMA, async_service_temperature_set,
+        SERVICE_SET_TEMPERATURE,
+        SET_TEMPERATURE_SCHEMA,
+        async_service_temperature_set,
+        [SUPPORT_TARGET_TEMPERATURE, SUPPORT_TARGET_TEMPERATURE_RANGE],
     )
     component.async_register_entity_service(
         SERVICE_SET_HUMIDITY,
         {vol.Required(ATTR_HUMIDITY): vol.Coerce(float)},
         "async_set_humidity",
+        [SUPPORT_TARGET_HUMIDITY],
     )
     component.async_register_entity_service(
         SERVICE_SET_FAN_MODE,
         {vol.Required(ATTR_FAN_MODE): cv.string},
         "async_set_fan_mode",
+        [SUPPORT_FAN_MODE],
     )
     component.async_register_entity_service(
         SERVICE_SET_SWING_MODE,
         {vol.Required(ATTR_SWING_MODE): cv.string},
         "async_set_swing_mode",
+        [SUPPORT_SWING_MODE],
     )
 
     return True
 
 
-async def async_setup_entry(hass: HomeAssistantType, entry):
+async def async_setup_entry(hass: HomeAssistant, entry):
     """Set up a config entry."""
     return await hass.data[DOMAIN].async_setup_entry(entry)
 
 
-async def async_unload_entry(hass: HomeAssistantType, entry):
+async def async_unload_entry(hass: HomeAssistant, entry):
     """Unload a config entry."""
     return await hass.data[DOMAIN].async_unload_entry(entry)
 
 
-class ClimateDevice(Entity):
-    """Representation of a climate device."""
+class ClimateEntity(Entity):
+    """Base class for climate entities."""
 
     @property
     def state(self) -> str:
@@ -172,7 +183,7 @@ class ClimateDevice(Entity):
         return PRECISION_WHOLE
 
     @property
-    def capability_attributes(self) -> Optional[Dict[str, Any]]:
+    def capability_attributes(self) -> dict[str, Any] | None:
         """Return the capability attributes."""
         supported_features = self.supported_features
         data = {
@@ -203,8 +214,9 @@ class ClimateDevice(Entity):
 
         return data
 
+    @final
     @property
-    def state_attributes(self) -> Dict[str, Any]:
+    def state_attributes(self) -> dict[str, Any]:
         """Return the optional state attributes."""
         supported_features = self.supported_features
         data = {
@@ -267,12 +279,12 @@ class ClimateDevice(Entity):
         raise NotImplementedError()
 
     @property
-    def current_humidity(self) -> Optional[int]:
+    def current_humidity(self) -> int | None:
         """Return the current humidity."""
         return None
 
     @property
-    def target_humidity(self) -> Optional[int]:
+    def target_humidity(self) -> int | None:
         """Return the humidity we try to reach."""
         return None
 
@@ -286,14 +298,14 @@ class ClimateDevice(Entity):
 
     @property
     @abstractmethod
-    def hvac_modes(self) -> List[str]:
+    def hvac_modes(self) -> list[str]:
         """Return the list of available hvac operation modes.
 
         Need to be a subset of HVAC_MODES.
         """
 
     @property
-    def hvac_action(self) -> Optional[str]:
+    def hvac_action(self) -> str | None:
         """Return the current running hvac operation if supported.
 
         Need to be one of CURRENT_HVAC_*.
@@ -301,22 +313,22 @@ class ClimateDevice(Entity):
         return None
 
     @property
-    def current_temperature(self) -> Optional[float]:
+    def current_temperature(self) -> float | None:
         """Return the current temperature."""
         return None
 
     @property
-    def target_temperature(self) -> Optional[float]:
+    def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return None
 
     @property
-    def target_temperature_step(self) -> Optional[float]:
+    def target_temperature_step(self) -> float | None:
         """Return the supported step of target temperature."""
         return None
 
     @property
-    def target_temperature_high(self) -> Optional[float]:
+    def target_temperature_high(self) -> float | None:
         """Return the highbound target temperature we try to reach.
 
         Requires SUPPORT_TARGET_TEMPERATURE_RANGE.
@@ -324,7 +336,7 @@ class ClimateDevice(Entity):
         raise NotImplementedError
 
     @property
-    def target_temperature_low(self) -> Optional[float]:
+    def target_temperature_low(self) -> float | None:
         """Return the lowbound target temperature we try to reach.
 
         Requires SUPPORT_TARGET_TEMPERATURE_RANGE.
@@ -332,7 +344,7 @@ class ClimateDevice(Entity):
         raise NotImplementedError
 
     @property
-    def preset_mode(self) -> Optional[str]:
+    def preset_mode(self) -> str | None:
         """Return the current preset mode, e.g., home, away, temp.
 
         Requires SUPPORT_PRESET_MODE.
@@ -340,7 +352,7 @@ class ClimateDevice(Entity):
         raise NotImplementedError
 
     @property
-    def preset_modes(self) -> Optional[List[str]]:
+    def preset_modes(self) -> list[str] | None:
         """Return a list of available preset modes.
 
         Requires SUPPORT_PRESET_MODE.
@@ -348,7 +360,7 @@ class ClimateDevice(Entity):
         raise NotImplementedError
 
     @property
-    def is_aux_heat(self) -> Optional[bool]:
+    def is_aux_heat(self) -> bool | None:
         """Return true if aux heater.
 
         Requires SUPPORT_AUX_HEAT.
@@ -356,7 +368,7 @@ class ClimateDevice(Entity):
         raise NotImplementedError
 
     @property
-    def fan_mode(self) -> Optional[str]:
+    def fan_mode(self) -> str | None:
         """Return the fan setting.
 
         Requires SUPPORT_FAN_MODE.
@@ -364,7 +376,7 @@ class ClimateDevice(Entity):
         raise NotImplementedError
 
     @property
-    def fan_modes(self) -> Optional[List[str]]:
+    def fan_modes(self) -> list[str] | None:
         """Return the list of available fan modes.
 
         Requires SUPPORT_FAN_MODE.
@@ -372,7 +384,7 @@ class ClimateDevice(Entity):
         raise NotImplementedError
 
     @property
-    def swing_mode(self) -> Optional[str]:
+    def swing_mode(self) -> str | None:
         """Return the swing setting.
 
         Requires SUPPORT_SWING_MODE.
@@ -380,7 +392,7 @@ class ClimateDevice(Entity):
         raise NotImplementedError
 
     @property
-    def swing_modes(self) -> Optional[List[str]]:
+    def swing_modes(self) -> list[str] | None:
         """Return the list of available swing modes.
 
         Requires SUPPORT_SWING_MODE.
@@ -509,7 +521,7 @@ class ClimateDevice(Entity):
 
 
 async def async_service_aux_heat(
-    entity: ClimateDevice, service: ServiceDataType
+    entity: ClimateEntity, service: ServiceDataType
 ) -> None:
     """Handle aux heat service."""
     if service.data[ATTR_AUX_HEAT]:
@@ -519,7 +531,7 @@ async def async_service_aux_heat(
 
 
 async def async_service_temperature_set(
-    entity: ClimateDevice, service: ServiceDataType
+    entity: ClimateEntity, service: ServiceDataType
 ) -> None:
     """Handle set temperature service."""
     hass = entity.hass
@@ -534,3 +546,15 @@ async def async_service_temperature_set(
             kwargs[value] = temp
 
     await entity.async_set_temperature(**kwargs)
+
+
+class ClimateDevice(ClimateEntity):
+    """Representation of a climate entity (for backwards compatibility)."""
+
+    def __init_subclass__(cls, **kwargs):
+        """Print deprecation warning."""
+        super().__init_subclass__(**kwargs)
+        _LOGGER.warning(
+            "ClimateDevice is deprecated, modify %s to extend ClimateEntity",
+            cls.__name__,
+        )

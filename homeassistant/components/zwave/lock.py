@@ -3,7 +3,7 @@ import logging
 
 import voluptuous as vol
 
-from homeassistant.components.lock import DOMAIN, LockDevice
+from homeassistant.components.lock import DOMAIN, LockEntity
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -38,6 +38,10 @@ DEVICE_MAPPINGS = {
     (0x0090, 0x238): WORKAROUND_DEVICE_STATE,
     # Kwikset 888ZW500-15S Smartcode 888
     (0x0090, 0x541): WORKAROUND_DEVICE_STATE,
+    # Kwikset 916
+    (0x0090, 0x0001): WORKAROUND_DEVICE_STATE,
+    # Kwikset Obsidian
+    (0x0090, 0x0742): WORKAROUND_DEVICE_STATE,
     # Yale Locks
     # Yale YRD210, YRD220, YRL220
     (0x0129, 0x0000): WORKAROUND_DEVICE_STATE | WORKAROUND_ALARM_TYPE,
@@ -91,7 +95,7 @@ LOCK_ALARM_TYPE = {
     "27": "Auto re-lock",
     "33": "User deleted: ",
     "112": "Master code changed or User added: ",
-    "113": "Duplicate Pin-code: ",
+    "113": "Duplicate PIN code: ",
     "130": "RF module, power restored",
     "144": "Unlocked by NFC Tag or Card by user ",
     "161": "Tamper Alarm: ",
@@ -239,7 +243,7 @@ def get_device(node, values, **kwargs):
     return ZwaveLock(values)
 
 
-class ZwaveLock(ZWaveDeviceEntity, LockDevice):
+class ZwaveLock(ZWaveDeviceEntity, LockEntity):
     """Representation of a Z-Wave Lock."""
 
     def __init__(self, values):
@@ -287,17 +291,17 @@ class ZwaveLock(ZWaveDeviceEntity, LockDevice):
             if self._state_workaround:
                 self._state = LOCK_STATUS.get(str(notification_data))
                 _LOGGER.debug("workaround: lock state set to %s", self._state)
-            if self._v2btze:
-                if (
-                    self.values.v2btze_advanced
-                    and self.values.v2btze_advanced.data == CONFIG_ADVANCED
-                ):
-                    self._state = LOCK_STATUS.get(str(notification_data))
-                    _LOGGER.debug(
-                        "Lock state set from Access Control value and is %s, get=%s",
-                        str(notification_data),
-                        self.state,
-                    )
+            if (
+                self._v2btze
+                and self.values.v2btze_advanced
+                and self.values.v2btze_advanced.data == CONFIG_ADVANCED
+            ):
+                self._state = LOCK_STATUS.get(str(notification_data))
+                _LOGGER.debug(
+                    "Lock state set from Access Control value and is %s, get=%s",
+                    str(notification_data),
+                    self.state,
+                )
 
         if self._track_message_workaround:
             this_message = self.node.stats["lastReceivedMessage"][5]
@@ -370,9 +374,9 @@ class ZwaveLock(ZWaveDeviceEntity, LockDevice):
         self.values.primary.data = False
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the device specific state attributes."""
-        data = super().device_state_attributes
+        data = super().extra_state_attributes
         if self._notification:
             data[ATTR_NOTIFICATION] = self._notification
         if self._lock_status:

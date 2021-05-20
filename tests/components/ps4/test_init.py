@@ -29,7 +29,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.setup import async_setup_component
 from homeassistant.util import location
 
-from tests.common import MockConfigEntry, mock_coro, mock_registry
+from tests.common import MockConfigEntry, mock_registry
 
 MOCK_HOST = "192.168.0.1"
 MOCK_NAME = "test_ps4"
@@ -46,6 +46,7 @@ MOCK_FLOW_RESULT = {
     "type": data_entry_flow.RESULT_TYPE_CREATE_ENTRY,
     "title": "test_ps4",
     "data": MOCK_DATA,
+    "options": {},
 }
 
 MOCK_ENTRY_ID = "SomeID"
@@ -119,8 +120,8 @@ async def test_creating_entry_sets_up_media_player(hass):
     mock_flow = "homeassistant.components.ps4.PlayStation4FlowHandler.async_step_user"
     with patch(
         "homeassistant.components.ps4.media_player.async_setup_entry",
-        return_value=mock_coro(True),
-    ) as mock_setup, patch(mock_flow, return_value=mock_coro(MOCK_FLOW_RESULT)):
+        return_value=True,
+    ) as mock_setup, patch(mock_flow, return_value=MOCK_FLOW_RESULT):
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
@@ -152,10 +153,10 @@ async def test_config_flow_entry_migrate(hass):
 
     with patch(
         "homeassistant.util.location.async_detect_location_info",
-        return_value=mock_coro(MOCK_LOCATION),
+        return_value=MOCK_LOCATION,
     ), patch(
         "homeassistant.helpers.entity_registry.async_get_registry",
-        return_value=mock_coro(mock_e_registry),
+        return_value=mock_e_registry,
     ):
         await ps4.async_migrate_entry(hass, mock_entry)
 
@@ -170,7 +171,7 @@ async def test_config_flow_entry_migrate(hass):
     assert mock_entity.device_id == MOCK_DEVICE_ID
 
     # Test that last four of credentials is appended to the unique_id.
-    assert mock_entity.unique_id == "{}_{}".format(MOCK_UNIQUE_ID, MOCK_CREDS[-4:])
+    assert mock_entity.unique_id == f"{MOCK_UNIQUE_ID}_{MOCK_CREDS[-4:]}"
 
     # Test that config entry is at the current version.
     assert mock_entry.version == VERSION
@@ -202,7 +203,7 @@ def test_games_reformat_to_dict(hass):
     ), patch("homeassistant.components.ps4.save_json", side_effect=MagicMock()), patch(
         "os.path.isfile", return_value=True
     ):
-        mock_games = ps4.load_games(hass)
+        mock_games = ps4.load_games(hass, MOCK_ENTRY_ID)
 
     # New format is a nested dict.
     assert isinstance(mock_games, dict)
@@ -224,7 +225,7 @@ def test_load_games(hass):
     ), patch("homeassistant.components.ps4.save_json", side_effect=MagicMock()), patch(
         "os.path.isfile", return_value=True
     ):
-        mock_games = ps4.load_games(hass)
+        mock_games = ps4.load_games(hass, MOCK_ENTRY_ID)
 
     assert isinstance(mock_games, dict)
 
@@ -243,7 +244,7 @@ def test_loading_games_returns_dict(hass):
     ), patch("homeassistant.components.ps4.save_json", side_effect=MagicMock()), patch(
         "os.path.isfile", return_value=True
     ):
-        mock_games = ps4.load_games(hass)
+        mock_games = ps4.load_games(hass, MOCK_ENTRY_ID)
 
     assert isinstance(mock_games, dict)
     assert not mock_games
@@ -253,7 +254,7 @@ def test_loading_games_returns_dict(hass):
     ), patch("homeassistant.components.ps4.save_json", side_effect=MagicMock()), patch(
         "os.path.isfile", return_value=True
     ):
-        mock_games = ps4.load_games(hass)
+        mock_games = ps4.load_games(hass, MOCK_ENTRY_ID)
 
     assert isinstance(mock_games, dict)
     assert not mock_games
@@ -261,7 +262,7 @@ def test_loading_games_returns_dict(hass):
     with patch("homeassistant.components.ps4.load_json", return_value=[]), patch(
         "homeassistant.components.ps4.save_json", side_effect=MagicMock()
     ), patch("os.path.isfile", return_value=True):
-        mock_games = ps4.load_games(hass)
+        mock_games = ps4.load_games(hass, MOCK_ENTRY_ID)
 
     assert isinstance(mock_games, dict)
     assert not mock_games
@@ -281,7 +282,7 @@ async def test_send_command(hass):
     assert mock_entity.entity_id == f"media_player.{MOCK_NAME}"
 
     # Test that all commands call service function.
-    with patch(mock_func, return_value=mock_coro(True)) as mock_service:
+    with patch(mock_func, return_value=True) as mock_service:
         for mock_command in COMMANDS:
             await hass.services.async_call(
                 DOMAIN,

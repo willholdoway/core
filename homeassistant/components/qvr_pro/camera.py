@@ -82,7 +82,7 @@ class QVRProCamera(Camera):
         return self._brand
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Get the state attributes."""
         attrs = {"qvr_guid": self.guid}
 
@@ -90,6 +90,13 @@ class QVRProCamera(Camera):
 
     def camera_image(self):
         """Get image bytes from camera."""
+        try:
+            return self._client.get_snapshot(self.guid)
+
+        except QVRResponseError as ex:
+            _LOGGER.error("Error getting image: %s", ex)
+            self._client.connect()
+
         return self._client.get_snapshot(self.guid)
 
     async def stream_source(self):

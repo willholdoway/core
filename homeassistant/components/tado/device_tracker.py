@@ -13,7 +13,7 @@ from homeassistant.components.device_tracker import (
     PLATFORM_SCHEMA,
     DeviceScanner,
 )
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, HTTP_OK
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
@@ -114,8 +114,8 @@ class TadoDeviceScanner(DeviceScanner):
 
                 response = await self.websession.get(url)
 
-                if response.status != 200:
-                    _LOGGER.warning("Error %d on %s.", response.status, self.tadoapiurl)
+                if response.status != HTTP_OK:
+                    _LOGGER.warning("Error %d on %s", response.status, self.tadoapiurl)
                     return False
 
                 tado_json = await response.json()
@@ -131,11 +131,10 @@ class TadoDeviceScanner(DeviceScanner):
 
         # Find devices that have geofencing enabled, and are currently at home.
         for mobile_device in tado_json:
-            if mobile_device.get("location"):
-                if mobile_device["location"]["atHome"]:
-                    device_id = mobile_device["id"]
-                    device_name = mobile_device["name"]
-                    last_results.append(Device(device_id, device_name))
+            if mobile_device.get("location") and mobile_device["location"]["atHome"]:
+                device_id = mobile_device["id"]
+                device_name = mobile_device["name"]
+                last_results.append(Device(device_id, device_name))
 
         self.last_results = last_results
 

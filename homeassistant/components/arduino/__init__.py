@@ -23,10 +23,15 @@ CONFIG_SCHEMA = vol.Schema(
 
 def setup(hass, config):
     """Set up the Arduino component."""
+    _LOGGER.warning(
+        "The %s integration has been deprecated. Please move your "
+        "configuration to the firmata integration. "
+        "https://www.home-assistant.io/integrations/firmata",
+        DOMAIN,
+    )
 
     port = config[DOMAIN][CONF_PORT]
 
-    board = None
     try:
         board = ArduinoBoard(port)
     except (serial.serialutil.SerialException, FileNotFoundError):

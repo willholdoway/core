@@ -12,7 +12,7 @@ from pyflic import (
 )
 import voluptuous as vol
 
-from homeassistant.components.binary_sensor import PLATFORM_SCHEMA, BinarySensorDevice
+from homeassistant.components.binary_sensor import PLATFORM_SCHEMA, BinarySensorEntity
 from homeassistant.const import (
     CONF_DISCOVERY,
     CONF_HOST,
@@ -123,7 +123,7 @@ def setup_button(hass, config, add_entities, client, address):
     add_entities([button])
 
 
-class FlicButton(BinarySensorDevice):
+class FlicButton(BinarySensorEntity):
     """Representation of a flic button."""
 
     def __init__(self, hass, client, address, timeout, ignored_click_types):
@@ -186,7 +186,7 @@ class FlicButton(BinarySensorDevice):
         return False
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device specific state attributes."""
         return {"address": self.address}
 

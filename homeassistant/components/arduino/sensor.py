@@ -1,16 +1,11 @@
 """Support for getting information from Arduino pins."""
-import logging
-
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import CONF_NAME
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 
 from . import DOMAIN
-
-_LOGGER = logging.getLogger(__name__)
 
 CONF_PINS = "pins"
 CONF_TYPE = "analog"
@@ -26,11 +21,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Arduino platform."""
     board = hass.data[DOMAIN]
 
-    if board is None:
-        _LOGGER.error("A connection has not been made to the Arduino board")
-        return False
-
-    pins = config.get(CONF_PINS)
+    pins = config[CONF_PINS]
 
     sensors = []
     for pinnum, pin in pins.items():
@@ -38,7 +29,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(sensors)
 
 
-class ArduinoSensor(Entity):
+class ArduinoSensor(SensorEntity):
     """Representation of an Arduino Sensor."""
 
     def __init__(self, name, pin, pin_type, board):

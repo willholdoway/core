@@ -2,7 +2,7 @@
 from uuid import uuid4
 
 from homeassistant.components.alexa import config, smart_home
-from homeassistant.core import Context
+from homeassistant.core import Context, callback
 
 from tests.common import async_mock_service
 
@@ -37,6 +37,11 @@ class MockConfig(config.AbstractConfig):
         """Return config locale."""
         return TEST_LOCALE
 
+    @callback
+    def user_identifier(self):
+        """Return an identifier for the user that represents this config."""
+        return "mock-user-id"
+
     def should_expose(self, entity_id):
         """If an entity should be exposed."""
         return True
@@ -47,7 +52,6 @@ class MockConfig(config.AbstractConfig):
 
     async def async_accept_grant(self, code):
         """Accept a grant."""
-        pass
 
 
 DEFAULT_CONFIG = MockConfig(None)

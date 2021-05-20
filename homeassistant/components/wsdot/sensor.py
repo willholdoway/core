@@ -6,17 +6,17 @@ import re
 import requests
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
     ATTR_NAME,
     CONF_API_KEY,
     CONF_ID,
     CONF_NAME,
+    HTTP_OK,
     TIME_MINUTES,
 )
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(sensors, True)
 
 
-class WashingtonStateTransportSensor(Entity):
+class WashingtonStateTransportSensor(SensorEntity):
     """
     Sensor that reads the WSDOT web API.
 
@@ -112,14 +112,14 @@ class WashingtonStateTravelTimeSensor(WashingtonStateTransportSensor):
         }
 
         response = requests.get(RESOURCE, params, timeout=10)
-        if response.status_code != 200:
+        if response.status_code != HTTP_OK:
             _LOGGER.warning("Invalid response from WSDOT API")
         else:
             self._data = response.json()
         self._state = self._data.get(ATTR_CURRENT_TIME)
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return other details about the sensor state."""
         if self._data is not None:
             attrs = {ATTR_ATTRIBUTION: ATTRIBUTION}

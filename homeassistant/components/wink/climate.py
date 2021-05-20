@@ -3,7 +3,7 @@ import logging
 
 import pywink
 
-from homeassistant.components.climate import ClimateDevice
+from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     ATTR_TARGET_TEMP_HIGH,
     ATTR_TARGET_TEMP_LOW,
@@ -80,7 +80,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             add_entities([WinkAC(climate, hass)])
 
 
-class WinkThermostat(WinkDevice, ClimateDevice):
+class WinkThermostat(WinkDevice, ClimateEntity):
     """Representation of a Wink thermostat."""
 
     @property
@@ -99,7 +99,7 @@ class WinkThermostat(WinkDevice, ClimateDevice):
         return TEMP_CELSIUS
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the optional device state attributes."""
         data = {}
         if self.external_temperature is not None:
@@ -254,7 +254,7 @@ class WinkThermostat(WinkDevice, ClimateDevice):
             except KeyError:
                 _LOGGER.error(
                     "Invalid operation mode mapping. %s doesn't map. "
-                    "Please report this.",
+                    "Please report this",
                     mode,
                 )
         return hvac_list
@@ -381,7 +381,7 @@ class WinkThermostat(WinkDevice, ClimateDevice):
         return return_value
 
 
-class WinkAC(WinkDevice, ClimateDevice):
+class WinkAC(WinkDevice, ClimateEntity):
     """Representation of a Wink air conditioner."""
 
     @property
@@ -396,7 +396,7 @@ class WinkAC(WinkDevice, ClimateDevice):
         return TEMP_CELSIUS
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the optional device state attributes."""
         data = {}
         data[ATTR_TOTAL_CONSUMPTION] = self.wink.total_consumption()
@@ -457,7 +457,7 @@ class WinkAC(WinkDevice, ClimateDevice):
             except KeyError:
                 _LOGGER.error(
                     "Invalid operation mode mapping. %s doesn't map. "
-                    "Please report this.",
+                    "Please report this",
                     mode,
                 )
         return hvac_list

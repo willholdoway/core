@@ -8,7 +8,7 @@ from aiohttp.hdrs import CONTENT_TYPE
 import async_timeout
 import voluptuous as vol
 
-from homeassistant.const import ATTR_NAME, CONF_API_KEY, CONF_TIMEOUT
+from homeassistant.const import ATTR_NAME, CONF_API_KEY, CONF_TIMEOUT, CONTENT_TYPE_JSON
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
@@ -189,7 +189,9 @@ async def async_setup(hass, config):
                 binary=True,
             )
         except HomeAssistantError as err:
-            _LOGGER.error("Can't delete person '%s' with error: %s", p_id, err)
+            _LOGGER.error(
+                "Can't add an image of a person '%s' with error: %s", p_id, err
+            )
 
     hass.services.async_register(
         DOMAIN, SERVICE_FACE_PERSON, async_face_person, schema=SCHEMA_FACE_SERVICE
@@ -229,7 +231,7 @@ class MicrosoftFaceGroupEntity(Entity):
         return False
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device specific state attributes."""
         attr = {}
         for name, p_id in self._api.store[self._id].items():
@@ -273,7 +275,9 @@ class MicrosoftFace:
             for person in persons:
                 self._store[g_id][person["name"]] = person["personId"]
 
-            tasks.append(self._entities[g_id].async_update_ha_state())
+            tasks.append(
+                asyncio.create_task(self._entities[g_id].async_update_ha_state())
+            )
 
         if tasks:
             await asyncio.wait(tasks)
@@ -288,7 +292,7 @@ class MicrosoftFace:
             headers[CONTENT_TYPE] = "application/octet-stream"
             payload = data
         else:
-            headers[CONTENT_TYPE] = "application/json"
+            headers[CONTENT_TYPE] = CONTENT_TYPE_JSON
             if data is not None:
                 payload = json.dumps(data).encode()
             else:

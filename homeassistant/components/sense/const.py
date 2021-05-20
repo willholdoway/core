@@ -12,6 +12,7 @@ SENSE_DATA = "sense_data"
 SENSE_DEVICE_UPDATE = "sense_devices_update"
 SENSE_DEVICES_DATA = "sense_devices_data"
 SENSE_DISCOVERED_DEVICES_DATA = "sense_discovered_devices"
+SENSE_TRENDS_COORDINATOR = "sense_trends_coordinator"
 
 ACTIVE_NAME = "Energy"
 ACTIVE_TYPE = "active"
@@ -54,7 +55,7 @@ MDI_ICONS = {
     "papershredder": "shredder",
     "printer": "printer",
     "pump": "water-pump",
-    "settings": "settings",
+    "settings": "cog",
     "skillet": "pot",
     "smartcamera": "webcam",
     "socket": "power-plug",

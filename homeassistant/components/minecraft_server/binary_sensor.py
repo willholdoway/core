@@ -2,17 +2,17 @@
 
 from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_CONNECTIVITY,
-    BinarySensorDevice,
+    BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
 
 from . import MinecraftServer, MinecraftServerEntity
 from .const import DOMAIN, ICON_STATUS, NAME_STATUS
 
 
 async def async_setup_entry(
-    hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities
 ) -> None:
     """Set up the Minecraft Server binary sensor platform."""
     server = hass.data[DOMAIN][config_entry.unique_id]
@@ -24,7 +24,7 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class MinecraftServerStatusBinarySensor(MinecraftServerEntity, BinarySensorDevice):
+class MinecraftServerStatusBinarySensor(MinecraftServerEntity, BinarySensorEntity):
     """Representation of a Minecraft Server status binary sensor."""
 
     def __init__(self, server: MinecraftServer) -> None:

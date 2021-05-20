@@ -3,8 +3,12 @@ from homeassistant.components.cover import (
     ATTR_POSITION,
     ATTR_TILT_POSITION,
     SUPPORT_CLOSE,
+    SUPPORT_CLOSE_TILT,
     SUPPORT_OPEN,
-    CoverDevice,
+    SUPPORT_OPEN_TILT,
+    SUPPORT_SET_TILT_POSITION,
+    SUPPORT_STOP_TILT,
+    CoverEntity,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_utc_time_change
@@ -26,6 +30,18 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
                 device_class="garage",
                 supported_features=(SUPPORT_OPEN | SUPPORT_CLOSE),
             ),
+            DemoCover(
+                hass,
+                "cover_5",
+                "Pergola Roof",
+                tilt_position=60,
+                supported_features=(
+                    SUPPORT_OPEN_TILT
+                    | SUPPORT_STOP_TILT
+                    | SUPPORT_CLOSE_TILT
+                    | SUPPORT_SET_TILT_POSITION
+                ),
+            ),
         ]
     )
 
@@ -35,7 +51,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     await async_setup_platform(hass, {}, async_add_entities)
 
 
-class DemoCover(CoverDevice):
+class DemoCover(CoverEntity):
     """Representation of a demo cover."""
 
     def __init__(

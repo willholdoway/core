@@ -1,16 +1,18 @@
 """Common fixtures and objects for the Switcher integration tests."""
+from __future__ import annotations
 
 from asyncio import Queue
 from datetime import datetime
-from typing import Any, Generator, Optional
+from typing import Any, Generator
+from unittest.mock import AsyncMock, patch
 
-from asynctest import CoroutineMock, patch
 from pytest import fixture
 
 from .consts import (
     DUMMY_AUTO_OFF_SET,
     DUMMY_DEVICE_ID,
     DUMMY_DEVICE_NAME,
+    DUMMY_DEVICE_PASSWORD,
     DUMMY_DEVICE_STATE,
     DUMMY_ELECTRIC_CURRENT,
     DUMMY_IP_ADDRESS,
@@ -55,7 +57,7 @@ class MockSwitcherV2Device:
         return DUMMY_DEVICE_STATE
 
     @property
-    def remaining_time(self) -> Optional[str]:
+    def remaining_time(self) -> str | None:
         """Return the time left to auto-off."""
         return DUMMY_REMAINING_TIME
 
@@ -80,6 +82,11 @@ class MockSwitcherV2Device:
         return DUMMY_PHONE_ID
 
     @property
+    def device_password(self) -> str:
+        """Return the device password."""
+        return DUMMY_DEVICE_PASSWORD
+
+    @property
     def last_data_update(self) -> datetime:
         """Return the timestamp of the last update."""
         return datetime.now()
@@ -100,7 +107,7 @@ def mock_bridge_fixture() -> Generator[None, Any, None]:
         await queue.put(MockSwitcherV2Device())
         return await queue.get()
 
-    mock_bridge = CoroutineMock()
+    mock_bridge = AsyncMock()
 
     patchers = [
         patch(
@@ -163,16 +170,17 @@ def mock_failed_bridge_fixture() -> Generator[None, Any, None]:
 
 
 @fixture(name="mock_api")
-def mock_api_fixture() -> Generator[CoroutineMock, Any, None]:
+def mock_api_fixture() -> Generator[AsyncMock, Any, None]:
     """Fixture for mocking aioswitcher.api.SwitcherV2Api."""
-    mock_api = CoroutineMock()
+    mock_api = AsyncMock()
 
     patchers = [
         patch(
-            "homeassistant.components.switcher_kis.SwitcherV2Api.connect", new=mock_api
+            "homeassistant.components.switcher_kis.switch.SwitcherV2Api.connect",
+            new=mock_api,
         ),
         patch(
-            "homeassistant.components.switcher_kis.SwitcherV2Api.disconnect",
+            "homeassistant.components.switcher_kis.switch.SwitcherV2Api.disconnect",
             new=mock_api,
         ),
     ]

@@ -5,7 +5,7 @@ import logging
 import requests
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_ID,
@@ -13,12 +13,12 @@ from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
     CONF_URL,
     CONF_VALUE_TEMPLATE,
+    HTTP_OK,
     POWER_WATT,
     STATE_UNKNOWN,
 )
 from homeassistant.helpers import template
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
@@ -92,13 +92,11 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     for elem in data.data:
 
-        if exclude_feeds is not None:
-            if int(elem["id"]) in exclude_feeds:
-                continue
+        if exclude_feeds is not None and int(elem["id"]) in exclude_feeds:
+            continue
 
-        if include_only_feeds is not None:
-            if int(elem["id"]) not in include_only_feeds:
-                continue
+        if include_only_feeds is not None and int(elem["id"]) not in include_only_feeds:
+            continue
 
         name = None
         if sensor_names is not None:
@@ -124,7 +122,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(sensors)
 
 
-class EmonCmsSensor(Entity):
+class EmonCmsSensor(SensorEntity):
     """Implementation of an Emoncms sensor."""
 
     def __init__(
@@ -174,7 +172,7 @@ class EmonCmsSensor(Entity):
         return self._state
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the attributes of the sensor."""
         return {
             ATTR_FEEDID: self._elem["id"],
@@ -245,7 +243,7 @@ class EmonCmsData:
             _LOGGER.error(exception)
             return
         else:
-            if req.status_code == 200:
+            if req.status_code == HTTP_OK:
                 self.data = req.json()
             else:
                 _LOGGER.error(

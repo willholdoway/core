@@ -1,27 +1,49 @@
 {
   "config": {
-    "title": "ZHA",
+    "flow_title": "{name}",
     "step": {
       "user": {
         "title": "ZHA",
+        "data": { "path": "Serial Device Path" },
+        "description": "Select serial port for Zigbee radio"
+      },
+      "pick_radio": {
+        "data": { "radio_type": "Radio Type" },
+        "title": "Radio Type",
+        "description": "Pick a type of your Zigbee radio"
+      },
+      "port_config": {
+        "title": "Settings",
+        "description": "Enter port specific settings",
         "data": {
-          "radio_type": "Radio Type",
-          "usb_path": "USB Device Path"
+          "path": "Serial device path",
+          "baudrate": "port speed",
+          "flow_control": "data flow control"
         }
       }
     },
     "error": {
-      "cannot_connect": "Unable to connect to ZHA device."
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
     },
     "abort": {
-      "single_instance_allowed": "Only a single configuration of ZHA is allowed."
+      "single_instance_allowed": "[%key:common::config_flow::abort::single_instance_allowed%]"
+    }
+  },
+  "config_panel": {
+    "zha_options": {
+      "title": "Global Options",
+      "enable_identify_on_join": "Enable identify effect when devices join the network",
+      "default_light_transition": "Default light transition time (seconds)"
+    },
+    "zha_alarm_options": {
+      "title": "Alarm Control Panel Options",
+      "alarm_master_code": "Master code for the alarm control panel(s)",
+      "alarm_failed_tries": "The number of consecutive failed code entries to trigger an alarm",
+      "alarm_arm_requires_code": "Code required for arming actions"
     }
   },
   "device_automation": {
-    "action_type": {
-      "squawk": "Squawk",
-      "warn": "Warn"
-    },
+    "action_type": { "squawk": "Squawk", "warn": "Warn" },
     "trigger_type": {
       "remote_button_short_press": "\"{subtype}\" button pressed",
       "remote_button_short_release": "\"{subtype}\" button released",
@@ -45,7 +67,8 @@
       "device_tilted": "Device tilted",
       "device_knocked": "Device knocked \"{subtype}\"",
       "device_dropped": "Device dropped",
-      "device_flipped": "Device flipped \"{subtype}\""
+      "device_flipped": "Device flipped \"{subtype}\"",
+      "device_offline": "Device offline"
     },
     "trigger_subtype": {
       "turn_on": "Turn on",

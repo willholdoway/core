@@ -1,7 +1,6 @@
 """Test Google http services."""
 from datetime import datetime, timedelta, timezone
-
-from asynctest import ANY, patch
+from unittest.mock import ANY, patch
 
 from homeassistant.components.google_assistant import GOOGLE_ASSISTANT_SCHEMA
 from homeassistant.components.google_assistant.const import (

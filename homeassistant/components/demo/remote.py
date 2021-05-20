@@ -1,5 +1,5 @@
 """Demo platform that has two fake remotes."""
-from homeassistant.components.remote import RemoteDevice
+from homeassistant.components.remote import RemoteEntity
 from homeassistant.const import DEVICE_DEFAULT_NAME
 
 
@@ -18,7 +18,7 @@ def setup_platform(hass, config, add_entities_callback, discovery_info=None):
     )
 
 
-class DemoRemote(RemoteDevice):
+class DemoRemote(RemoteEntity):
     """Representation of a demo remote."""
 
     def __init__(self, name, state, icon):
@@ -49,7 +49,7 @@ class DemoRemote(RemoteDevice):
         return self._state
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device state attributes."""
         if self._last_command_sent is not None:
             return {"last_command_sent": self._last_command_sent}

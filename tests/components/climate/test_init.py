@@ -1,5 +1,6 @@
 """The tests for the climate component."""
-from typing import List
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,6 +11,7 @@ from homeassistant.components.climate import (
     HVAC_MODE_OFF,
     SET_TEMPERATURE_SCHEMA,
     ClimateDevice,
+    ClimateEntity,
 )
 
 from tests.common import async_mock_service
@@ -45,7 +47,7 @@ async def test_set_temp_schema(hass, caplog):
     assert calls[-1].data == data
 
 
-class MockClimateDevice(ClimateDevice):
+class MockClimateEntity(ClimateEntity):
     """Mock Climate device to use in tests."""
 
     @property
@@ -57,17 +59,23 @@ class MockClimateDevice(ClimateDevice):
         return HVAC_MODE_HEAT
 
     @property
-    def hvac_modes(self) -> List[str]:
+    def hvac_modes(self) -> list[str]:
         """Return the list of available hvac operation modes.
 
         Need to be a subset of HVAC_MODES.
         """
         return [HVAC_MODE_OFF, HVAC_MODE_HEAT]
 
+    def turn_on(self) -> None:
+        """Turn on."""
+
+    def turn_off(self) -> None:
+        """Turn off."""
+
 
 async def test_sync_turn_on(hass):
     """Test if async turn_on calls sync turn_on."""
-    climate = MockClimateDevice()
+    climate = MockClimateEntity()
     climate.hass = hass
 
     climate.turn_on = MagicMock()
@@ -78,10 +86,28 @@ async def test_sync_turn_on(hass):
 
 async def test_sync_turn_off(hass):
     """Test if async turn_off calls sync turn_off."""
-    climate = MockClimateDevice()
+    climate = MockClimateEntity()
     climate.hass = hass
 
     climate.turn_off = MagicMock()
     await climate.async_turn_off()
 
     assert climate.turn_off.called
+
+
+def test_deprecated_base_class(caplog):
+    """Test deprecated base class."""
+
+    class CustomClimate(ClimateDevice):
+        """Custom climate entity class."""
+
+        @property
+        def hvac_mode(self):
+            pass
+
+        @property
+        def hvac_modes(self):
+            pass
+
+    CustomClimate()
+    assert "ClimateDevice is deprecated, modify CustomClimate" in caplog.text

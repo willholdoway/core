@@ -70,13 +70,15 @@ def _precheck_image(image, opts):
         raise ValueError()
     try:
         img = Image.open(io.BytesIO(image))
-    except OSError:
+    except OSError as err:
         _LOGGER.warning("Failed to open image")
-        raise ValueError()
+        raise ValueError() from err
     imgfmt = str(img.format)
     if imgfmt not in ("PNG", "JPEG"):
         _LOGGER.warning("Image is of unsupported type: %s", imgfmt)
         raise ValueError()
+    if img.mode != "RGB":
+        img = img.convert("RGB")
     return img
 
 
@@ -188,8 +190,8 @@ class ProxyCamera(Camera):
         super().__init__()
         self.hass = hass
         self._proxied_camera = config.get(CONF_ENTITY_ID)
-        self._name = config.get(CONF_NAME) or "{} - {}".format(
-            DEFAULT_BASENAME, self._proxied_camera
+        self._name = (
+            config.get(CONF_NAME) or f"{DEFAULT_BASENAME} - {self._proxied_camera}"
         )
         self._image_opts = ImageOpts(
             config.get(CONF_MAX_IMAGE_WIDTH),
@@ -258,7 +260,7 @@ class ProxyCamera(Camera):
             )
 
         return await async_get_still_stream(
-            request, self._async_stream_image, self.content_type, self.frame_interval,
+            request, self._async_stream_image, self.content_type, self.frame_interval
         )
 
     @property
@@ -272,8 +274,8 @@ class ProxyCamera(Camera):
             image = await async_get_image(self.hass, self._proxied_camera)
             if not image:
                 return None
-        except HomeAssistantError:
-            raise asyncio.CancelledError()
+        except HomeAssistantError as err:
+            raise asyncio.CancelledError() from err
 
         if self._mode == MODE_RESIZE:
             job = _resize_image

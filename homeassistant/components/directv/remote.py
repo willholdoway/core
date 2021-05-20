@@ -1,13 +1,17 @@
 """Support for the DIRECTV remote."""
+from __future__ import annotations
+
+from collections.abc import Iterable
 from datetime import timedelta
 import logging
-from typing import Any, Callable, Iterable, List
+from typing import Any
 
 from directv import DIRECTV, DIRECTVError
 
-from homeassistant.components.remote import RemoteDevice
+from homeassistant.components.remote import ATTR_NUM_REPEATS, RemoteEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import DIRECTVEntity
 from .const import DOMAIN
@@ -18,9 +22,9 @@ SCAN_INTERVAL = timedelta(minutes=2)
 
 
 async def async_setup_entry(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     entry: ConfigEntry,
-    async_add_entities: Callable[[List, bool], None],
+    async_add_entities: AddEntitiesCallback,
 ) -> bool:
     """Load DirecTV remote based on a config entry."""
     dtv = hass.data[DOMAIN][entry.entry_id]
@@ -29,20 +33,24 @@ async def async_setup_entry(
     for location in dtv.device.locations:
         entities.append(
             DIRECTVRemote(
-                dtv=dtv, name=str.title(location.name), address=location.address,
+                dtv=dtv,
+                name=str.title(location.name),
+                address=location.address,
             )
         )
 
     async_add_entities(entities, True)
 
 
-class DIRECTVRemote(DIRECTVEntity, RemoteDevice):
+class DIRECTVRemote(DIRECTVEntity, RemoteEntity):
     """Device that sends commands to a DirecTV receiver."""
 
     def __init__(self, *, dtv: DIRECTV, name: str, address: str = "0") -> None:
         """Initialize DirecTV remote."""
         super().__init__(
-            dtv=dtv, name=name, address=address,
+            dtv=dtv,
+            name=name,
+            address=address,
         )
 
         self._available = False
@@ -95,12 +103,15 @@ class DIRECTVRemote(DIRECTVEntity, RemoteDevice):
         blue, chanup, chandown, prev, 0, 1, 2, 3, 4, 5,
         6, 7, 8, 9, dash, enter
         """
-        for single_command in command:
-            try:
-                await self.dtv.remote(single_command, self._address)
-            except DIRECTVError:
-                _LOGGER.exception(
-                    "Sending command %s to device %s failed",
-                    single_command,
-                    self._device_id,
-                )
+        num_repeats = kwargs[ATTR_NUM_REPEATS]
+
+        for _ in range(num_repeats):
+            for single_command in command:
+                try:
+                    await self.dtv.remote(single_command, self._address)
+                except DIRECTVError:
+                    _LOGGER.exception(
+                        "Sending command %s to device %s failed",
+                        single_command,
+                        self._device_id,
+                    )

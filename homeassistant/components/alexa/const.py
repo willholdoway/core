@@ -1,7 +1,6 @@
 """Constants for the Alexa integration."""
 from collections import OrderedDict
 
-from homeassistant.components import fan
 from homeassistant.components.climate import const as climate
 from homeassistant.const import TEMP_CELSIUS, TEMP_FAHRENHEIT
 
@@ -18,8 +17,6 @@ CONF_DISPLAY_URL = "display_url"
 CONF_FILTER = "filter"
 CONF_ENTITY_CONFIG = "entity_config"
 CONF_ENDPOINT = "endpoint"
-CONF_CLIENT_ID = "client_id"
-CONF_CLIENT_SECRET = "client_secret"
 CONF_LOCALE = "locale"
 
 ATTR_UID = "uid"
@@ -41,8 +38,8 @@ API_HEADER = "header"
 API_PAYLOAD = "payload"
 API_SCOPE = "scope"
 API_CHANGE = "change"
+API_PASSWORD = "password"
 
-CONF_DESCRIPTION = "description"
 CONF_DISPLAY_CATEGORIES = "display_categories"
 CONF_SUPPORTED_LOCALES = (
     "de-DE",
@@ -53,10 +50,13 @@ CONF_SUPPORTED_LOCALES = (
     "en-US",
     "es-ES",
     "es-MX",
+    "es-US",
     "fr-CA",
     "fr-FR",
+    "hi-IN",
     "it-IT",
     "ja-JP",
+    "pt-BR",
 )
 
 API_TEMP_UNITS = {TEMP_FAHRENHEIT: "FAHRENHEIT", TEMP_CELSIUS: "CELSIUS"}
@@ -77,13 +77,6 @@ API_THERMOSTAT_MODES = OrderedDict(
 )
 API_THERMOSTAT_MODES_CUSTOM = {climate.HVAC_MODE_DRY: "DEHUMIDIFY"}
 API_THERMOSTAT_PRESETS = {climate.PRESET_ECO: "ECO"}
-
-PERCENTAGE_FAN_MAP = {
-    fan.SPEED_OFF: 0,
-    fan.SPEED_LOW: 33,
-    fan.SPEED_MEDIUM: 66,
-    fan.SPEED_HIGH: 100,
-}
 
 
 class Cause:
@@ -126,6 +119,8 @@ class Inputs:
     """
 
     VALID_SOURCE_NAME_MAP = {
+        "antenna": "TUNER",
+        "antennatv": "TUNER",
         "aux": "AUX 1",
         "aux1": "AUX 1",
         "aux2": "AUX 2",
@@ -135,6 +130,7 @@ class Inputs:
         "aux6": "AUX 6",
         "aux7": "AUX 7",
         "bluray": "BLURAY",
+        "blurayplayer": "BLURAY",
         "cable": "CABLE",
         "cd": "CD",
         "coax": "COAX 1",
@@ -186,6 +182,7 @@ class Inputs:
         "playstation": "PLAYSTATION",
         "playstation3": "PLAYSTATION 3",
         "playstation4": "PLAYSTATION 4",
+        "rokumediaplayer": "MEDIA PLAYER",
         "satellite": "SATELLITE",
         "satellitetv": "SATELLITE",
         "smartcast": "SMARTCAST",

@@ -4,7 +4,7 @@ import logging
 from orvibo.s20 import S20, S20Exception, discover
 import voluptuous as vol
 
-from homeassistant.components.switch import PLATFORM_SCHEMA, SwitchDevice
+from homeassistant.components.switch import PLATFORM_SCHEMA, SwitchEntity
 from homeassistant.const import (
     CONF_DISCOVERY,
     CONF_HOST,
@@ -44,7 +44,7 @@ def setup_platform(hass, config, add_entities_callback, discovery_info=None):
     switch_conf = config.get(CONF_SWITCHES, [config])
 
     if config.get(CONF_DISCOVERY):
-        _LOGGER.info("Discovering S20 switches ...")
+        _LOGGER.info("Discovering S20 switches")
         switch_data.update(discover())
 
     for switch in switch_conf:
@@ -62,7 +62,7 @@ def setup_platform(hass, config, add_entities_callback, discovery_info=None):
     add_entities_callback(switches)
 
 
-class S20Switch(SwitchDevice):
+class S20Switch(SwitchEntity):
     """Representation of an S20 switch."""
 
     def __init__(self, name, s20):
@@ -72,11 +72,6 @@ class S20Switch(SwitchDevice):
         self._s20 = s20
         self._state = False
         self._exc = S20Exception
-
-    @property
-    def should_poll(self):
-        """Return the polling state."""
-        return True
 
     @property
     def name(self):

@@ -1,6 +1,6 @@
 """MySensors platform that offers a Climate (MySensors-HVAC) component."""
 from homeassistant.components import mysensors
-from homeassistant.components.climate import ClimateDevice
+from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     ATTR_TARGET_TEMP_HIGH,
     ATTR_TARGET_TEMP_LOW,
@@ -13,7 +13,13 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
     SUPPORT_TARGET_TEMPERATURE_RANGE,
 )
+from homeassistant.components.mysensors import on_unload
+from homeassistant.components.mysensors.const import MYSENSORS_DISCOVERY
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 DICT_HA_TO_MYS = {
     HVAC_MODE_AUTO: "AutoChangeOver",
@@ -32,18 +38,35 @@ FAN_LIST = ["Auto", "Min", "Normal", "Max"]
 OPERATION_LIST = [HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_COOL, HVAC_MODE_HEAT]
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the mysensors climate."""
-    mysensors.setup_mysensors_platform(
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
+    """Set up this platform for a specific ConfigEntry(==Gateway)."""
+
+    async def async_discover(discovery_info):
+        """Discover and add a MySensors climate."""
+        mysensors.setup_mysensors_platform(
+            hass,
+            DOMAIN,
+            discovery_info,
+            MySensorsHVAC,
+            async_add_entities=async_add_entities,
+        )
+
+    await on_unload(
         hass,
-        DOMAIN,
-        discovery_info,
-        MySensorsHVAC,
-        async_add_entities=async_add_entities,
+        config_entry,
+        async_dispatcher_connect(
+            hass,
+            MYSENSORS_DISCOVERY.format(config_entry.entry_id, DOMAIN),
+            async_discover,
+        ),
     )
 
 
-class MySensorsHVAC(mysensors.device.MySensorsEntity, ClimateDevice):
+class MySensorsHVAC(mysensors.device.MySensorsEntity, ClimateEntity):
     """Representation of a MySensors HVAC."""
 
     @property
@@ -63,14 +86,9 @@ class MySensorsHVAC(mysensors.device.MySensorsEntity, ClimateDevice):
         return features
 
     @property
-    def assumed_state(self):
-        """Return True if unable to access real state of entity."""
-        return self.gateway.optimistic
-
-    @property
     def temperature_unit(self):
         """Return the unit of measurement."""
-        return TEMP_CELSIUS if self.gateway.metric else TEMP_FAHRENHEIT
+        return TEMP_CELSIUS if self.hass.config.units.is_metric else TEMP_FAHRENHEIT
 
     @property
     def current_temperature(self):
@@ -159,7 +177,7 @@ class MySensorsHVAC(mysensors.device.MySensorsEntity, ClimateDevice):
             self.gateway.set_child_value(
                 self.node_id, self.child_id, value_type, value, ack=1
             )
-            if self.gateway.optimistic:
+            if self.assumed_state:
                 # Optimistically assume that device has changed state
                 self._values[value_type] = value
                 self.async_write_ha_state()
@@ -170,7 +188,7 @@ class MySensorsHVAC(mysensors.device.MySensorsEntity, ClimateDevice):
         self.gateway.set_child_value(
             self.node_id, self.child_id, set_req.V_HVAC_SPEED, fan_mode, ack=1
         )
-        if self.gateway.optimistic:
+        if self.assumed_state:
             # Optimistically assume that device has changed state
             self._values[set_req.V_HVAC_SPEED] = fan_mode
             self.async_write_ha_state()
@@ -184,7 +202,7 @@ class MySensorsHVAC(mysensors.device.MySensorsEntity, ClimateDevice):
             DICT_HA_TO_MYS[hvac_mode],
             ack=1,
         )
-        if self.gateway.optimistic:
+        if self.assumed_state:
             # Optimistically assume that device has changed state
             self._values[self.value_type] = hvac_mode
             self.async_write_ha_state()

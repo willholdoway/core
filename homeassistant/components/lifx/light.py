@@ -4,7 +4,6 @@ from datetime import timedelta
 from functools import partial
 import logging
 import math
-import sys
 
 import aiolifx as aiolifx_module
 import aiolifx_effects as aiolifx_effects_module
@@ -32,21 +31,15 @@ from homeassistant.components.light import (
     SUPPORT_TRANSITION,
     VALID_BRIGHTNESS,
     VALID_BRIGHTNESS_PCT,
-    Light,
+    LightEntity,
     preprocess_turn_on_alternatives,
 )
-from homeassistant.const import (
-    ATTR_ENTITY_ID,
-    ATTR_MODE,
-    ENTITY_MATCH_ALL,
-    ENTITY_MATCH_NONE,
-    EVENT_HOMEASSISTANT_STOP,
-)
+from homeassistant.const import ATTR_ENTITY_ID, ATTR_MODE, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
+from homeassistant.helpers import entity_platform
 import homeassistant.helpers.config_validation as cv
 import homeassistant.helpers.device_registry as dr
 from homeassistant.helpers.event import async_track_point_in_utc_time
-from homeassistant.helpers.service import async_extract_entity_ids
 import homeassistant.util.color as color_util
 
 from . import (
@@ -105,15 +98,13 @@ PULSE_MODES = [
     PULSE_MODE_SOLID,
 ]
 
-LIFX_EFFECT_SCHEMA = vol.Schema(
-    {
-        vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
-        vol.Optional(ATTR_POWER_ON, default=True): cv.boolean,
-    }
-)
+LIFX_EFFECT_SCHEMA = {
+    vol.Optional(ATTR_POWER_ON, default=True): cv.boolean,
+}
 
-LIFX_EFFECT_PULSE_SCHEMA = LIFX_EFFECT_SCHEMA.extend(
+LIFX_EFFECT_PULSE_SCHEMA = cv.make_entity_service_schema(
     {
+        **LIFX_EFFECT_SCHEMA,
         ATTR_BRIGHTNESS: VALID_BRIGHTNESS,
         ATTR_BRIGHTNESS_PCT: VALID_BRIGHTNESS_PCT,
         vol.Exclusive(ATTR_COLOR_NAME, COLOR_GROUP): cv.string,
@@ -135,27 +126,26 @@ LIFX_EFFECT_PULSE_SCHEMA = LIFX_EFFECT_SCHEMA.extend(
         vol.Exclusive(ATTR_COLOR_TEMP, COLOR_GROUP): vol.All(
             vol.Coerce(int), vol.Range(min=1)
         ),
-        vol.Exclusive(ATTR_KELVIN, COLOR_GROUP): vol.All(
-            vol.Coerce(int), vol.Range(min=0)
-        ),
+        vol.Exclusive(ATTR_KELVIN, COLOR_GROUP): cv.positive_int,
         ATTR_PERIOD: vol.All(vol.Coerce(float), vol.Range(min=0.05)),
         ATTR_CYCLES: vol.All(vol.Coerce(float), vol.Range(min=1)),
         ATTR_MODE: vol.In(PULSE_MODES),
     }
 )
 
-LIFX_EFFECT_COLORLOOP_SCHEMA = LIFX_EFFECT_SCHEMA.extend(
+LIFX_EFFECT_COLORLOOP_SCHEMA = cv.make_entity_service_schema(
     {
+        **LIFX_EFFECT_SCHEMA,
         ATTR_BRIGHTNESS: VALID_BRIGHTNESS,
         ATTR_BRIGHTNESS_PCT: VALID_BRIGHTNESS_PCT,
         ATTR_PERIOD: vol.All(vol.Coerce(float), vol.Clamp(min=0.05)),
         ATTR_CHANGE: vol.All(vol.Coerce(float), vol.Clamp(min=0, max=360)),
         ATTR_SPREAD: vol.All(vol.Coerce(float), vol.Clamp(min=0, max=360)),
-        ATTR_TRANSITION: vol.All(vol.Coerce(float), vol.Range(min=0)),
+        ATTR_TRANSITION: cv.positive_float,
     }
 )
 
-LIFX_EFFECT_STOP_SCHEMA = vol.Schema({vol.Optional(ATTR_ENTITY_ID): cv.entity_ids})
+LIFX_EFFECT_STOP_SCHEMA = cv.make_entity_service_schema({})
 
 
 def aiolifx():
@@ -170,17 +160,11 @@ def aiolifx_effects():
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the LIFX light platform. Obsolete."""
-    _LOGGER.warning("LIFX no longer works with light platform configuration.")
+    _LOGGER.warning("LIFX no longer works with light platform configuration")
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up LIFX from a config entry."""
-    if sys.platform == "win32":
-        _LOGGER.warning(
-            "The lifx platform is known to not work on Windows. "
-            "Consider using the lifx_legacy platform instead"
-        )
-
     # Priority 1: manual config
     interfaces = hass.data[LIFX_DOMAIN].get(DOMAIN)
     if not interfaces:
@@ -191,7 +175,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             # Priority 3: default interface
             interfaces = [{}]
 
-    lifx_manager = LIFXManager(hass, async_add_entities)
+    platform = entity_platform.async_get_current_platform()
+    lifx_manager = LIFXManager(hass, platform, async_add_entities)
     hass.data[DATA_LIFX_MANAGER] = lifx_manager
 
     for interface in interfaces:
@@ -207,14 +192,20 @@ def lifx_features(bulb):
     ) or aiolifx().products.features_map.get(1)
 
 
-def find_hsbk(**kwargs):
+def find_hsbk(hass, **kwargs):
     """Find the desired color from a number of possible inputs."""
     hue, saturation, brightness, kelvin = [None] * 4
 
-    preprocess_turn_on_alternatives(kwargs)
+    preprocess_turn_on_alternatives(hass, kwargs)
 
     if ATTR_HS_COLOR in kwargs:
         hue, saturation = kwargs[ATTR_HS_COLOR]
+    elif ATTR_RGB_COLOR in kwargs:
+        hue, saturation = color_util.color_RGB_to_hs(*kwargs[ATTR_RGB_COLOR])
+    elif ATTR_XY_COLOR in kwargs:
+        hue, saturation = color_util.color_xy_to_hs(*kwargs[ATTR_XY_COLOR])
+
+    if hue is not None:
         hue = int(hue / 360 * 65535)
         saturation = int(saturation / 100 * 65535)
         kelvin = 3500
@@ -242,10 +233,11 @@ def merge_hsbk(base, change):
 class LIFXManager:
     """Representation of all known LIFX entities."""
 
-    def __init__(self, hass, async_add_entities):
+    def __init__(self, hass, platform, async_add_entities):
         """Initialize the light."""
         self.entities = {}
         self.hass = hass
+        self.platform = platform
         self.async_add_entities = async_add_entities
         self.effects_conductor = aiolifx_effects().Conductor(hass.loop)
         self.discoveries = []
@@ -293,22 +285,8 @@ class LIFXManager:
 
     def register_set_state(self):
         """Register the LIFX set_state service call."""
-
-        async def service_handler(service):
-            """Apply a service."""
-            tasks = []
-            for light in await self.async_service_to_entities(service):
-                if service.service == SERVICE_LIFX_SET_STATE:
-                    task = light.set_state(**service.data)
-                tasks.append(self.hass.async_create_task(task))
-            if tasks:
-                await asyncio.wait(tasks)
-
-        self.hass.services.async_register(
-            LIFX_DOMAIN,
-            SERVICE_LIFX_SET_STATE,
-            service_handler,
-            schema=LIFX_SET_STATE_SCHEMA,
+        self.platform.async_register_entity_service(
+            SERVICE_LIFX_SET_STATE, LIFX_SET_STATE_SCHEMA, "set_state"
         )
 
     def register_effects(self):
@@ -316,7 +294,7 @@ class LIFXManager:
 
         async def service_handler(service):
             """Apply a service, i.e. start an effect."""
-            entities = await self.async_service_to_entities(service)
+            entities = await self.platform.async_extract_from_service(service)
             if entities:
                 await self.start_effect(entities, service.service, **service.data)
 
@@ -351,11 +329,11 @@ class LIFXManager:
                 period=kwargs.get(ATTR_PERIOD),
                 cycles=kwargs.get(ATTR_CYCLES),
                 mode=kwargs.get(ATTR_MODE),
-                hsbk=find_hsbk(**kwargs),
+                hsbk=find_hsbk(self.hass, **kwargs),
             )
             await self.effects_conductor.start(effect, bulbs)
         elif service == SERVICE_EFFECT_COLORLOOP:
-            preprocess_turn_on_alternatives(kwargs)
+            preprocess_turn_on_alternatives(self.hass, kwargs)
 
             brightness = None
             if ATTR_BRIGHTNESS in kwargs:
@@ -372,21 +350,6 @@ class LIFXManager:
             await self.effects_conductor.start(effect, bulbs)
         elif service == SERVICE_EFFECT_STOP:
             await self.effects_conductor.stop(bulbs)
-
-    async def async_service_to_entities(self, service):
-        """Return the known entities that a service call mentions."""
-        if service.data.get(ATTR_ENTITY_ID) == ENTITY_MATCH_NONE:
-            return []
-
-        if service.data.get(ATTR_ENTITY_ID) == ENTITY_MATCH_ALL:
-            return self.entities.values()
-
-        entity_ids = await async_extract_entity_ids(self.hass, service)
-        return [
-            entity
-            for entity in self.entities.values()
-            if entity.entity_id in entity_ids
-        ]
 
     @callback
     def register(self, bulb):
@@ -405,6 +368,12 @@ class LIFXManager:
 
             # Read initial state
             ack = AwaitAioLIFX().wait
+
+            # Used to populate sw_version
+            # no need to wait as we do not
+            # need it until later
+            bulb.get_hostfirmware()
+
             color_resp = await ack(bulb.get_color)
             if color_resp:
                 version_resp = await ack(bulb.get_version)
@@ -472,7 +441,7 @@ def convert_16_to_8(value):
     return value >> 8
 
 
-class LIFXLight(Light):
+class LIFXLight(LightEntity):
     """Representation of a LIFX light."""
 
     def __init__(self, bulb, effects_conductor):
@@ -493,7 +462,13 @@ class LIFXLight(Light):
             "manufacturer": "LIFX",
         }
 
-        model = aiolifx().products.product_map.get(self.bulb.product)
+        version = self.bulb.host_firmware_version
+        if version is not None:
+            info["sw_version"] = version
+
+        product_map = aiolifx().products.product_map
+
+        model = product_map.get(self.bulb.product) or self.bulb.product
         if model is not None:
             info["model"] = model
 
@@ -624,7 +599,7 @@ class LIFXLight(Light):
             power_on = kwargs.get(ATTR_POWER, False)
             power_off = not kwargs.get(ATTR_POWER, True)
 
-            hsbk = find_hsbk(**kwargs)
+            hsbk = find_hsbk(self.hass, **kwargs)
 
             # Send messages, waiting for ACK each time
             ack = AwaitAioLIFX().wait
@@ -632,9 +607,13 @@ class LIFXLight(Light):
             if not self.is_on:
                 if power_off:
                     await self.set_power(ack, False)
-                if hsbk:
+                # If fading on with color, set color immediately
+                if hsbk and power_on:
                     await self.set_color(ack, hsbk, kwargs)
-                if power_on:
+                    await self.set_power(ack, True, duration=fade)
+                elif hsbk:
+                    await self.set_color(ack, hsbk, kwargs, duration=fade)
+                elif power_on:
                     await self.set_power(ack, True, duration=fade)
             else:
                 if power_on:
@@ -663,7 +642,9 @@ class LIFXLight(Light):
         """Start an effect with default parameters."""
         service = kwargs[ATTR_EFFECT]
         data = {ATTR_ENTITY_ID: self.entity_id}
-        await self.hass.services.async_call(LIFX_DOMAIN, service, data)
+        await self.hass.services.async_call(
+            LIFX_DOMAIN, service, data, context=self._context
+        )
 
     async def async_update(self):
         """Update bulb status."""

@@ -2,6 +2,7 @@
 from abc import abstractmethod
 from datetime import timedelta
 import logging
+from typing import final
 
 import voluptuous as vol
 
@@ -31,6 +32,8 @@ from .const import (
     SUPPORT_ALARM_ARM_NIGHT,
     SUPPORT_ALARM_TRIGGER,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "alarm_control_panel"
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -99,8 +102,8 @@ async def async_unload_entry(hass, entry):
     return await hass.data[DOMAIN].async_unload_entry(entry)
 
 
-class AlarmControlPanel(Entity):
-    """An abstract class for alarm control devices."""
+class AlarmControlPanelEntity(Entity):
+    """An abstract class for alarm control entities."""
 
     @property
     def code_format(self):
@@ -170,12 +173,24 @@ class AlarmControlPanel(Entity):
     def supported_features(self) -> int:
         """Return the list of supported features."""
 
+    @final
     @property
     def state_attributes(self):
         """Return the state attributes."""
-        state_attr = {
+        return {
             ATTR_CODE_FORMAT: self.code_format,
             ATTR_CHANGED_BY: self.changed_by,
             ATTR_CODE_ARM_REQUIRED: self.code_arm_required,
         }
-        return state_attr
+
+
+class AlarmControlPanel(AlarmControlPanelEntity):
+    """An abstract class for alarm control entities (for backwards compatibility)."""
+
+    def __init_subclass__(cls, **kwargs):
+        """Print deprecation warning."""
+        super().__init_subclass__(**kwargs)
+        _LOGGER.warning(
+            "AlarmControlPanel is deprecated, modify %s to extend AlarmControlPanelEntity",
+            cls.__name__,
+        )

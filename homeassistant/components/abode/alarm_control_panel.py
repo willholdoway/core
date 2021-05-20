@@ -25,7 +25,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     )
 
 
-class AbodeAlarm(AbodeDevice, alarm.AlarmControlPanel):
+class AbodeAlarm(AbodeDevice, alarm.AlarmControlPanelEntity):
     """An alarm_control_panel implementation for Abode."""
 
     @property
@@ -69,7 +69,7 @@ class AbodeAlarm(AbodeDevice, alarm.AlarmControlPanel):
         self._device.set_away()
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,

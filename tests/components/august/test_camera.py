@@ -1,6 +1,6 @@
 """The camera tests for the august platform."""
 
-from asynctest import mock
+from unittest.mock import patch
 
 from homeassistant.const import STATE_IDLE
 
@@ -14,7 +14,7 @@ async def test_create_doorbell(hass, aiohttp_client):
     """Test creation of a doorbell."""
     doorbell_one = await _mock_doorbell_from_fixture(hass, "get_doorbell.json")
 
-    with mock.patch.object(
+    with patch.object(
         doorbell_one, "async_get_doorbell_image", create=False, return_value="image"
     ):
         await _create_august_with_devices(hass, [doorbell_one])

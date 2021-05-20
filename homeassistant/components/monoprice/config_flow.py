@@ -16,8 +16,8 @@ from .const import (
     CONF_SOURCE_5,
     CONF_SOURCE_6,
     CONF_SOURCES,
+    DOMAIN,
 )
-from .const import DOMAIN  # pylint:disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,9 +55,9 @@ async def validate_input(hass: core.HomeAssistant, data):
     """
     try:
         await get_async_monoprice(data[CONF_PORT], hass.loop)
-    except SerialException:
+    except SerialException as err:
         _LOGGER.error("Error connecting to Monoprice controller")
-        raise CannotConnect
+        raise CannotConnect from err
 
     sources = _sources_from_config(data)
 
@@ -69,7 +69,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Monoprice 6-Zone Amplifier."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -99,7 +98,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 @core.callback
 def _key_for_source(index, source, previous_sources):
     if str(index) in previous_sources:
-        key = vol.Optional(source, default=previous_sources[str(index)])
+        key = vol.Optional(
+            source, description={"suggested_value": previous_sources[str(index)]}
+        )
     else:
         key = vol.Optional(source)
 
@@ -136,7 +137,10 @@ class MonopriceOptionsFlowHandler(config_entries.OptionsFlow):
             for idx, source in enumerate(SOURCES)
         }
 
-        return self.async_show_form(step_id="init", data_schema=vol.Schema(options),)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(options),
+        )
 
 
 class CannotConnect(exceptions.HomeAssistantError):

@@ -4,6 +4,7 @@ import voluptuous_serialize
 
 import homeassistant.components.automation as automation
 from homeassistant.components.climate import DOMAIN, const, device_trigger
+from homeassistant.const import TEMP_CELSIUS
 from homeassistant.helpers import config_validation as cv, device_registry
 from homeassistant.setup import async_setup_component
 
@@ -15,6 +16,7 @@ from tests.common import (
     mock_device_registry,
     mock_registry,
 )
+from tests.components.blueprint.conftest import stub_blueprint_populate  # noqa: F401
 
 
 @pytest.fixture
@@ -228,13 +230,13 @@ async def test_get_trigger_capabilities_temp_humid(hass, type):
         capabilities["extra_fields"], custom_serializer=cv.custom_serializer
     ) == [
         {
-            "description": {"suffix": "°C"},
+            "description": {"suffix": TEMP_CELSIUS},
             "name": "above",
             "optional": True,
             "type": "float",
         },
         {
-            "description": {"suffix": "°C"},
+            "description": {"suffix": TEMP_CELSIUS},
             "name": "below",
             "optional": True,
             "type": "float",

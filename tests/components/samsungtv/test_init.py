@@ -1,6 +1,6 @@
 """Tests for the Samsung TV Integration."""
-from asynctest import mock
-from asynctest.mock import call, patch
+from unittest.mock import Mock, call, patch
+
 import pytest
 
 from homeassistant.components.media_player.const import DOMAIN, SUPPORT_TURN_ON
@@ -49,9 +49,9 @@ def remote_fixture():
     ) as socket1, patch(
         "homeassistant.components.samsungtv.socket"
     ) as socket2:
-        remote = mock.Mock()
-        remote.__enter__ = mock.Mock()
-        remote.__exit__ = mock.Mock()
+        remote = Mock()
+        remote.__enter__ = Mock()
+        remote.__exit__ = Mock()
         remote_class.return_value = remote
         socket1.gethostbyname.return_value = "FAKE_IP_ADDRESS"
         socket2.gethostbyname.return_value = "FAKE_IP_ADDRESS"

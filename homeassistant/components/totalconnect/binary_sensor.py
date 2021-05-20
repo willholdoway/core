@@ -1,34 +1,28 @@
 """Interfaces with TotalConnect sensors."""
-import logging
-
 from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_DOOR,
     DEVICE_CLASS_GAS,
     DEVICE_CLASS_SMOKE,
-    BinarySensorDevice,
+    BinarySensorEntity,
 )
 
-from . import DOMAIN as TOTALCONNECT_DOMAIN
-
-_LOGGER = logging.getLogger(__name__)
+from .const import DOMAIN
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up a sensor for a TotalConnect device."""
-    if discovery_info is None:
-        return
-
+async def async_setup_entry(hass, entry, async_add_entities) -> None:
+    """Set up TotalConnect device sensors based on a config entry."""
     sensors = []
 
-    client_locations = hass.data[TOTALCONNECT_DOMAIN].client.locations
+    client_locations = hass.data[DOMAIN][entry.entry_id].locations
 
     for location_id, location in client_locations.items():
         for zone_id, zone in location.zones.items():
             sensors.append(TotalConnectBinarySensor(zone_id, location_id, zone))
-    add_entities(sensors, True)
+
+    async_add_entities(sensors, True)
 
 
-class TotalConnectBinarySensor(BinarySensorDevice):
+class TotalConnectBinarySensor(BinarySensorEntity):
     """Represent an TotalConnect zone."""
 
     def __init__(self, zone_id, location_id, zone):
@@ -79,7 +73,7 @@ class TotalConnectBinarySensor(BinarySensorDevice):
         return None
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         attributes = {
             "zone_id": self._zone_id,

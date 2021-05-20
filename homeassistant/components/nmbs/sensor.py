@@ -4,7 +4,7 @@ import logging
 from pyrail import iRail
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
     ATTR_LATITUDE,
@@ -14,7 +14,6 @@ from homeassistant.const import (
     TIME_MINUTES,
 )
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 import homeassistant.util.dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,7 +87,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(sensors, True)
 
 
-class NMBSLiveBoard(Entity):
+class NMBSLiveBoard(SensorEntity):
     """Get the next train from a station's liveboard."""
 
     def __init__(self, api_client, live_station, station_from, station_to):
@@ -126,7 +125,7 @@ class NMBSLiveBoard(Entity):
         return self._state
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the sensor attributes if data is available."""
         if self._state is None or not self._attrs:
             return None
@@ -152,15 +151,19 @@ class NMBSLiveBoard(Entity):
     def update(self):
         """Set the state equal to the next departure."""
         liveboard = self._api_client.get_liveboard(self._station)
+
+        if liveboard is None or not liveboard.get("departures"):
+            return
+
         next_departure = liveboard["departures"]["departure"][0]
 
         self._attrs = next_departure
-        self._state = "Track {} - {}".format(
-            next_departure["platform"], next_departure["station"]
+        self._state = (
+            f"Track {next_departure['platform']} - {next_departure['station']}"
         )
 
 
-class NMBSSensor(Entity):
+class NMBSSensor(SensorEntity):
     """Get the the total travel time for a given connection."""
 
     def __init__(
@@ -198,7 +201,7 @@ class NMBSSensor(Entity):
         return "mdi:train"
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return sensor attributes if data is available."""
         if self._state is None or not self._attrs:
             return None
@@ -265,6 +268,9 @@ class NMBSSensor(Entity):
         connections = self._api_client.get_connections(
             self._station_from, self._station_to
         )
+
+        if connections is None or not connections.get("connection"):
+            return
 
         if int(connections["connection"][0]["departure"]["left"]) > 0:
             next_connection = connections["connection"][1]

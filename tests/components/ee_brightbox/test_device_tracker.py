@@ -1,7 +1,7 @@
 """Tests for the EE BrightBox device scanner."""
 from datetime import datetime
+from unittest.mock import patch
 
-from asynctest import patch
 from eebrightbox import EEBrightBoxException
 import pytest
 

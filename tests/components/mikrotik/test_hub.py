@@ -1,5 +1,6 @@
 """Test Mikrotik hub."""
-from asynctest import patch
+from unittest.mock import patch
+
 import librouteros
 
 from homeassistant import config_entries

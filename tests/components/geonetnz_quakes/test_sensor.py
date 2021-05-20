@@ -1,7 +1,6 @@
 """The tests for the GeoNet NZ Quakes Feed integration."""
 import datetime
-
-from asynctest import patch
+from unittest.mock import patch
 
 from homeassistant.components import geonetnz_quakes
 from homeassistant.components.geonetnz_quakes import DEFAULT_SCAN_INTERVAL
@@ -28,7 +27,7 @@ from tests.components.geonetnz_quakes import _generate_mock_feed_entry
 CONFIG = {geonetnz_quakes.DOMAIN: {CONF_RADIUS: 200}}
 
 
-async def test_setup(hass):
+async def test_setup(hass, legacy_patchable_time):
     """Test the general setup of the integration."""
     # Set up some mock feed entries for this test.
     mock_entry_1 = _generate_mock_feed_entry(

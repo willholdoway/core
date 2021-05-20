@@ -5,7 +5,7 @@ import logging
 from blockchain import exchangerates, statistics
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
     CONF_CURRENCY,
@@ -14,7 +14,6 @@ from homeassistant.const import (
     TIME_SECONDS,
 )
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,7 +62,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Bitcoin sensors."""
 
-    currency = config.get(CONF_CURRENCY)
+    currency = config[CONF_CURRENCY]
 
     if currency not in exchangerates.get_ticker():
         _LOGGER.warning("Currency %s is not available. Using USD", currency)
@@ -77,7 +76,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(dev, True)
 
 
-class BitcoinSensor(Entity):
+class BitcoinSensor(SensorEntity):
     """Representation of a Bitcoin sensor."""
 
     def __init__(self, data, option_type, currency):
@@ -110,7 +109,7 @@ class BitcoinSensor(Entity):
         return ICON
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the sensor."""
         return {ATTR_ATTRIBUTION: ATTRIBUTION}
 

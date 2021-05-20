@@ -4,7 +4,7 @@ import logging
 from kiwiki import KiwiClient, KiwiException
 import voluptuous as vol
 
-from homeassistant.components.lock import PLATFORM_SCHEMA, LockDevice
+from homeassistant.components.lock import PLATFORM_SCHEMA, LockEntity
 from homeassistant.const import (
     ATTR_ID,
     ATTR_LATITUDE,
@@ -42,12 +42,12 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     available_locks = kiwi.get_locks()
     if not available_locks:
         # No locks found; abort setup routine.
-        _LOGGER.info("No KIWI locks found in your account.")
+        _LOGGER.info("No KIWI locks found in your account")
         return
     add_entities([KiwiLock(lock, kiwi) for lock in available_locks], True)
 
 
-class KiwiLock(LockDevice):
+class KiwiLock(LockEntity):
     """Representation of a Kiwi lock."""
 
     def __init__(self, kiwi_lock, client):
@@ -86,7 +86,7 @@ class KiwiLock(LockDevice):
         return self._state == STATE_LOCKED
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the device specific state attributes."""
         return self._device_attrs
 
@@ -102,7 +102,7 @@ class KiwiLock(LockDevice):
         try:
             self._client.open_door(self.lock_id)
         except KiwiException:
-            _LOGGER.error("failed to open door")
+            _LOGGER.error("Failed to open door")
         else:
             self._state = STATE_UNLOCKED
             self.hass.add_job(

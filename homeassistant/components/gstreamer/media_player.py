@@ -4,7 +4,7 @@ import logging
 from gsp import GstreamerPlayer
 import voluptuous as vol
 
-from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerDevice
+from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerEntity
 from homeassistant.components.media_player.const import (
     MEDIA_TYPE_MUSIC,
     SUPPORT_NEXT_TRACK,
@@ -50,7 +50,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities([GstreamerDevice(player, name)])
 
 
-class GstreamerDevice(MediaPlayerDevice):
+class GstreamerDevice(MediaPlayerEntity):
     """Representation of a Gstreamer device."""
 
     def __init__(self, player, name):
@@ -82,7 +82,7 @@ class GstreamerDevice(MediaPlayerDevice):
     def play_media(self, media_type, media_id, **kwargs):
         """Play media."""
         if media_type != MEDIA_TYPE_MUSIC:
-            _LOGGER.error("invalid media type")
+            _LOGGER.error("Invalid media type")
             return
         self._player.queue(media_id)
 

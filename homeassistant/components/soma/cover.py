@@ -2,7 +2,9 @@
 
 import logging
 
-from homeassistant.components.cover import ATTR_POSITION, CoverDevice
+from requests import RequestException
+
+from homeassistant.components.cover import ATTR_POSITION, CoverEntity
 from homeassistant.components.soma import API, DEVICES, DOMAIN, SomaEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,7 +20,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     )
 
 
-class SomaCover(SomaEntity, CoverDevice):
+class SomaCover(SomaEntity, CoverEntity):
     """Representation of a Soma cover device."""
 
     def close_cover(self, **kwargs):
@@ -67,3 +69,23 @@ class SomaCover(SomaEntity, CoverDevice):
     def is_closed(self):
         """Return if the cover is closed."""
         return self.current_position == 0
+
+    async def async_update(self):
+        """Update the cover with the latest data."""
+        try:
+            _LOGGER.debug("Soma Cover Update")
+            response = await self.hass.async_add_executor_job(
+                self.api.get_shade_state, self.device["mac"]
+            )
+        except RequestException:
+            _LOGGER.error("Connection to SOMA Connect failed")
+            self.is_available = False
+            return
+        if response["result"] != "success":
+            _LOGGER.error(
+                "Unable to reach device %s (%s)", self.device["name"], response["msg"]
+            )
+            self.is_available = False
+            return
+        self.current_position = 100 - response["position"]
+        self.is_available = True

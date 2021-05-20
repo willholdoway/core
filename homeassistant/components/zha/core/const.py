@@ -1,15 +1,32 @@
 """All constants related to the ZHA component."""
+from __future__ import annotations
+
 import enum
 import logging
 
+import bellows.zigbee.application
+import voluptuous as vol
+from zigpy.config import CONF_DEVICE_PATH  # noqa: F401 # pylint: disable=unused-import
+import zigpy_cc.zigbee.application
+import zigpy_deconz.zigbee.application
+import zigpy_xbee.zigbee.application
+import zigpy_zigate.zigbee.application
+import zigpy_znp.zigbee.application
+
+from homeassistant.components.alarm_control_panel import DOMAIN as ALARM
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR
+from homeassistant.components.climate import DOMAIN as CLIMATE
 from homeassistant.components.cover import DOMAIN as COVER
 from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER
 from homeassistant.components.fan import DOMAIN as FAN
 from homeassistant.components.light import DOMAIN as LIGHT
 from homeassistant.components.lock import DOMAIN as LOCK
+from homeassistant.components.number import DOMAIN as NUMBER
 from homeassistant.components.sensor import DOMAIN as SENSOR
 from homeassistant.components.switch import DOMAIN as SWITCH
+import homeassistant.helpers.config_validation as cv
+
+from .typing import CALLABLE_T
 
 ATTR_ARGS = "args"
 ATTR_ATTRIBUTE = "attribute"
@@ -18,11 +35,11 @@ ATTR_ATTRIBUTE_NAME = "attribute_name"
 ATTR_AVAILABLE = "available"
 ATTR_CLUSTER_ID = "cluster_id"
 ATTR_CLUSTER_TYPE = "cluster_type"
-ATTR_COMMAND = "command"
 ATTR_COMMAND_TYPE = "command_type"
 ATTR_DEVICE_IEEE = "device_ieee"
 ATTR_DEVICE_TYPE = "device_type"
 ATTR_ENDPOINTS = "endpoints"
+ATTR_ENDPOINT_NAMES = "endpoint_names"
 ATTR_ENDPOINT_ID = "endpoint_id"
 ATTR_IEEE = "ieee"
 ATTR_IN_CLUSTERS = "in_clusters"
@@ -33,7 +50,7 @@ ATTR_MANUFACTURER = "manufacturer"
 ATTR_MANUFACTURER_CODE = "manufacturer_code"
 ATTR_MEMBERS = "members"
 ATTR_MODEL = "model"
-ATTR_NAME = "name"
+ATTR_NEIGHBORS = "neighbors"
 ATTR_NODE_DESCRIPTOR = "node_descriptor"
 ATTR_NWK = "nwk"
 ATTR_OUT_CLUSTERS = "out_clusters"
@@ -57,6 +74,7 @@ BINDINGS = "bindings"
 
 CHANNEL_ACCELEROMETER = "accelerometer"
 CHANNEL_ANALOG_INPUT = "analog_input"
+CHANNEL_ANALOG_OUTPUT = "analog_output"
 CHANNEL_ATTRIBUTE = "attribute"
 CHANNEL_BASIC = "basic"
 CHANNEL_COLOR = "light_color"
@@ -66,6 +84,7 @@ CHANNEL_ELECTRICAL_MEASUREMENT = "electrical_measurement"
 CHANNEL_EVENT_RELAY = "event_relay"
 CHANNEL_FAN = "fan"
 CHANNEL_HUMIDITY = "humidity"
+CHANNEL_IAS_ACE = "ias_ace"
 CHANNEL_IAS_WD = "ias_wd"
 CHANNEL_IDENTIFY = "identify"
 CHANNEL_ILLUMINANCE = "illuminance"
@@ -75,8 +94,10 @@ CHANNEL_OCCUPANCY = "occupancy"
 CHANNEL_ON_OFF = "on_off"
 CHANNEL_POWER_CONFIGURATION = "power"
 CHANNEL_PRESSURE = "pressure"
+CHANNEL_SHADE = "shade"
 CHANNEL_SMARTENERGY_METERING = "smartenergy_metering"
 CHANNEL_TEMPERATURE = "temperature"
+CHANNEL_THERMOSTAT = "thermostat"
 CHANNEL_ZDO = "zdo"
 CHANNEL_ZONE = ZONE = "ias_zone"
 
@@ -86,15 +107,52 @@ CLUSTER_COMMANDS_SERVER = "server_commands"
 CLUSTER_TYPE_IN = "in"
 CLUSTER_TYPE_OUT = "out"
 
-COMPONENTS = (BINARY_SENSOR, COVER, DEVICE_TRACKER, FAN, LIGHT, LOCK, SENSOR, SWITCH)
+PLATFORMS = (
+    ALARM,
+    BINARY_SENSOR,
+    CLIMATE,
+    COVER,
+    DEVICE_TRACKER,
+    FAN,
+    LIGHT,
+    LOCK,
+    NUMBER,
+    SENSOR,
+    SWITCH,
+)
+
+CONF_ALARM_MASTER_CODE = "alarm_master_code"
+CONF_ALARM_FAILED_TRIES = "alarm_failed_tries"
+CONF_ALARM_ARM_REQUIRES_CODE = "alarm_arm_requires_code"
 
 CONF_BAUDRATE = "baudrate"
+CONF_CUSTOM_QUIRKS_PATH = "custom_quirks_path"
 CONF_DATABASE = "database_path"
+CONF_DEFAULT_LIGHT_TRANSITION = "default_light_transition"
 CONF_DEVICE_CONFIG = "device_config"
+CONF_ENABLE_IDENTIFY_ON_JOIN = "enable_identify_on_join"
 CONF_ENABLE_QUIRKS = "enable_quirks"
+CONF_FLOWCONTROL = "flow_control"
 CONF_RADIO_TYPE = "radio_type"
 CONF_USB_PATH = "usb_path"
-CONTROLLER = "controller"
+CONF_ZIGPY = "zigpy_config"
+
+CONF_ZHA_OPTIONS_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_DEFAULT_LIGHT_TRANSITION): cv.positive_int,
+        vol.Required(CONF_ENABLE_IDENTIFY_ON_JOIN, default=True): cv.boolean,
+    }
+)
+
+CONF_ZHA_ALARM_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_ALARM_MASTER_CODE, default="1234"): cv.string,
+        vol.Required(CONF_ALARM_FAILED_TRIES, default=3): cv.positive_int,
+        vol.Required(CONF_ALARM_ARM_REQUIRES_CODE, default=False): cv.boolean,
+    }
+)
+
+CUSTOM_CONFIGURATION = "custom_configuration"
 
 DATA_DEVICE_CONFIG = "zha_device_config"
 DATA_ZHA = "zha"
@@ -104,11 +162,13 @@ DATA_ZHA_CORE_EVENTS = "zha_core_events"
 DATA_ZHA_DISPATCHERS = "zha_dispatchers"
 DATA_ZHA_GATEWAY = "zha_gateway"
 DATA_ZHA_PLATFORM_LOADED = "platform_loaded"
+DATA_ZHA_SHUTDOWN_TASK = "zha_shutdown_task"
 
 DEBUG_COMP_BELLOWS = "bellows"
 DEBUG_COMP_ZHA = "homeassistant.components.zha"
 DEBUG_COMP_ZIGPY = "zigpy"
 DEBUG_COMP_ZIGPY_CC = "zigpy_cc"
+DEBUG_COMP_ZIGPY_ZNP = "zigpy_znp"
 DEBUG_COMP_ZIGPY_DECONZ = "zigpy_deconz"
 DEBUG_COMP_ZIGPY_XBEE = "zigpy_xbee"
 DEBUG_COMP_ZIGPY_ZIGATE = "zigpy_zigate"
@@ -119,6 +179,7 @@ DEBUG_LEVELS = {
     DEBUG_COMP_ZHA: logging.DEBUG,
     DEBUG_COMP_ZIGPY: logging.DEBUG,
     DEBUG_COMP_ZIGPY_CC: logging.DEBUG,
+    DEBUG_COMP_ZIGPY_ZNP: logging.DEBUG,
     DEBUG_COMP_ZIGPY_DECONZ: logging.DEBUG,
     DEBUG_COMP_ZIGPY_XBEE: logging.DEBUG,
     DEBUG_COMP_ZIGPY_ZIGATE: logging.DEBUG,
@@ -128,6 +189,9 @@ DEBUG_RELAY_LOGGERS = [DEBUG_COMP_ZHA, DEBUG_COMP_ZIGPY]
 DEFAULT_RADIO_TYPE = "ezsp"
 DEFAULT_BAUDRATE = 57600
 DEFAULT_DATABASE_NAME = "zigbee.db"
+
+DEVICE_PAIRING_STATUS = "pairing_status"
+
 DISCOVERY_KEY = "zha_discovery_info"
 
 DOMAIN = "zha"
@@ -141,20 +205,73 @@ MFG_CLUSTER_ID_START = 0xFC00
 POWER_MAINS_POWERED = "Mains"
 POWER_BATTERY_OR_UNKNOWN = "Battery or Unknown"
 
+PRESET_SCHEDULE = "schedule"
+PRESET_COMPLEX = "complex"
+
+ZHA_ALARM_OPTIONS = "zha_alarm_options"
+ZHA_OPTIONS = "zha_options"
+
+ZHA_CONFIG_SCHEMAS = {
+    ZHA_OPTIONS: CONF_ZHA_OPTIONS_SCHEMA,
+    ZHA_ALARM_OPTIONS: CONF_ZHA_ALARM_SCHEMA,
+}
+
 
 class RadioType(enum.Enum):
     """Possible options for radio type."""
 
-    deconz = "deconz"
-    ezsp = "ezsp"
-    ti_cc = "ti_cc"
-    xbee = "xbee"
-    zigate = "zigate"
+    znp = (
+        "ZNP = Texas Instruments Z-Stack ZNP protocol: CC253x, CC26x2, CC13x2",
+        zigpy_znp.zigbee.application.ControllerApplication,
+    )
+    ezsp = (
+        "EZSP = Silicon Labs EmberZNet protocol: Elelabs, HUSBZB-1, Telegesis",
+        bellows.zigbee.application.ControllerApplication,
+    )
+    deconz = (
+        "deCONZ = dresden elektronik deCONZ protocol: ConBee I/II, RaspBee I/II",
+        zigpy_deconz.zigbee.application.ControllerApplication,
+    )
+    ti_cc = (
+        "Legacy TI_CC = Texas Instruments Z-Stack ZNP protocol: CC253x, CC26x2, CC13x2",
+        zigpy_cc.zigbee.application.ControllerApplication,
+    )
+    zigate = (
+        "ZiGate = ZiGate Zigbee radios: PiZiGate, ZiGate USB-TTL, ZiGate WiFi",
+        zigpy_zigate.zigbee.application.ControllerApplication,
+    )
+    xbee = (
+        "XBee = Digi XBee Zigbee radios: Digi XBee Series 2, 2C, 3",
+        zigpy_xbee.zigbee.application.ControllerApplication,
+    )
 
     @classmethod
-    def list(cls):
-        """Return list of enum's values."""
-        return [e.value for e in RadioType]
+    def list(cls) -> list[str]:
+        """Return a list of descriptions."""
+        return [e.description for e in RadioType]
+
+    @classmethod
+    def get_by_description(cls, description: str) -> str:
+        """Get radio by description."""
+        for radio in cls:
+            if radio.description == description:
+                return radio.name
+        raise ValueError
+
+    def __init__(self, description: str, controller_cls: CALLABLE_T):
+        """Init instance."""
+        self._desc = description
+        self._ctrl_cls = controller_cls
+
+    @property
+    def controller(self) -> CALLABLE_T:
+        """Return controller class."""
+        return self._ctrl_cls
+
+    @property
+    def description(self) -> str:
+        """Return radio type description."""
+        return self._desc
 
 
 REPORT_CONFIG_MAX_INT = 900
@@ -212,7 +329,7 @@ SIGNAL_REMOVE = "remove"
 SIGNAL_SET_LEVEL = "set_level"
 SIGNAL_STATE_ATTR = "update_state_attribute"
 SIGNAL_UPDATE_DEVICE = "{}_zha_update_device"
-SIGNAL_REMOVE_GROUP = "remove_group"
+SIGNAL_GROUP_ENTITY_REMOVED = "group_entity_removed"
 SIGNAL_GROUP_MEMBERSHIP_CHANGE = "group_membership_change"
 
 UNKNOWN = "unknown"
@@ -244,6 +361,11 @@ WARNING_DEVICE_SQUAWK_MODE_ARMED = 0
 WARNING_DEVICE_SQUAWK_MODE_DISARMED = 1
 
 ZHA_DISCOVERY_NEW = "zha_discovery_new_{}"
+ZHA_CHANNEL_MSG = "zha_channel_message"
+ZHA_CHANNEL_MSG_BIND = "zha_channel_bind"
+ZHA_CHANNEL_MSG_CFG_RPT = "zha_channel_configure_reporting"
+ZHA_CHANNEL_MSG_DATA = "zha_channel_msg_data"
+ZHA_CHANNEL_CFG_DONE = "zha_channel_cfg_done"
 ZHA_GW_MSG = "zha_gateway_message"
 ZHA_GW_MSG_DEVICE_FULL_INIT = "device_fully_initialized"
 ZHA_GW_MSG_DEVICE_INFO = "device_info"
@@ -257,8 +379,6 @@ ZHA_GW_MSG_GROUP_REMOVED = "group_removed"
 ZHA_GW_MSG_LOG_ENTRY = "log_entry"
 ZHA_GW_MSG_LOG_OUTPUT = "log_output"
 ZHA_GW_MSG_RAW_INIT = "raw_device_initialized"
-ZHA_GW_RADIO = "radio"
-ZHA_GW_RADIO_DESCRIPTION = "radio_description"
 
 EFFECT_BLINK = 0x00
 EFFECT_BREATHE = 0x01

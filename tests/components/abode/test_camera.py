@@ -4,6 +4,7 @@ from unittest.mock import patch
 from homeassistant.components.abode.const import DOMAIN as ABODE_DOMAIN
 from homeassistant.components.camera import DOMAIN as CAMERA_DOMAIN
 from homeassistant.const import ATTR_ENTITY_ID, STATE_IDLE
+from homeassistant.helpers import entity_registry as er
 
 from .common import setup_platform
 
@@ -11,7 +12,7 @@ from .common import setup_platform
 async def test_entity_registry(hass):
     """Tests that the devices are registered in the entity registry."""
     await setup_platform(hass, CAMERA_DOMAIN)
-    entity_registry = await hass.helpers.entity_registry.async_get_registry()
+    entity_registry = er.async_get(hass)
 
     entry = entity_registry.async_get("camera.test_cam")
     assert entry.unique_id == "d0a3a1c316891ceb00c20118aae2a133"
@@ -38,3 +39,33 @@ async def test_capture_image(hass):
         )
         await hass.async_block_till_done()
         mock_capture.assert_called_once()
+
+
+async def test_camera_on(hass):
+    """Test the camera turn on service."""
+    await setup_platform(hass, CAMERA_DOMAIN)
+
+    with patch("abodepy.AbodeCamera.privacy_mode") as mock_capture:
+        await hass.services.async_call(
+            CAMERA_DOMAIN,
+            "turn_on",
+            {ATTR_ENTITY_ID: "camera.test_cam"},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+        mock_capture.assert_called_once_with(False)
+
+
+async def test_camera_off(hass):
+    """Test the camera turn off service."""
+    await setup_platform(hass, CAMERA_DOMAIN)
+
+    with patch("abodepy.AbodeCamera.privacy_mode") as mock_capture:
+        await hass.services.async_call(
+            CAMERA_DOMAIN,
+            "turn_off",
+            {ATTR_ENTITY_ID: "camera.test_cam"},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+        mock_capture.assert_called_once_with(True)

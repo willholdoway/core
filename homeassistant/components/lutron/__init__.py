@@ -12,6 +12,8 @@ from homeassistant.util import slugify
 
 DOMAIN = "lutron"
 
+PLATFORMS = ["light", "cover", "switch", "scene", "binary_sensor"]
+
 _LOGGER = logging.getLogger(__name__)
 
 LUTRON_BUTTONS = "lutron_buttons"
@@ -20,6 +22,7 @@ LUTRON_DEVICES = "lutron_devices"
 
 # Attribute on events that indicates what action was taken with the button.
 ATTR_ACTION = "action"
+ATTR_FULL_ID = "full_id"
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -36,8 +39,7 @@ CONFIG_SCHEMA = vol.Schema(
 
 
 def setup(hass, base_config):
-    """Set up the Lutron component."""
-
+    """Set up the Lutron integration."""
     hass.data[LUTRON_BUTTONS] = []
     hass.data[LUTRON_CONTROLLER] = None
     hass.data[LUTRON_DEVICES] = {
@@ -84,14 +86,16 @@ def setup(hass, base_config):
                         (area.name, keypad.name, button, led)
                     )
 
-                hass.data[LUTRON_BUTTONS].append(LutronButton(hass, keypad, button))
+                hass.data[LUTRON_BUTTONS].append(
+                    LutronButton(hass, area.name, keypad, button)
+                )
         if area.occupancy_group is not None:
             hass.data[LUTRON_DEVICES]["binary_sensor"].append(
                 (area.name, area.occupancy_group)
             )
 
-    for component in ("light", "cover", "switch", "scene", "binary_sensor"):
-        discovery.load_platform(hass, component, DOMAIN, {}, base_config)
+    for platform in PLATFORMS:
+        discovery.load_platform(hass, platform, DOMAIN, {}, base_config)
     return True
 
 
@@ -133,7 +137,7 @@ class LutronButton:
     represented as an entity; it simply fires events.
     """
 
-    def __init__(self, hass, keypad, button):
+    def __init__(self, hass, area_name, keypad, button):
         """Register callback for activity on the button."""
         name = f"{keypad.name}: {button.name}"
         self._hass = hass
@@ -141,13 +145,17 @@ class LutronButton:
             button.button_type is not None and "RaiseLower" in button.button_type
         )
         self._id = slugify(name)
+        self._keypad = keypad
+        self._area_name = area_name
+        self._button_name = button.name
+        self._button = button
         self._event = "lutron_event"
+        self._full_id = slugify(f"{area_name} {keypad.name}: {button.name}")
 
         button.subscribe(self.button_callback, None)
 
     def button_callback(self, button, context, event, params):
         """Fire an event about a button being pressed or released."""
-
         # Events per button type:
         #   RaiseLower -> pressed/released
         #   SingleAction -> single
@@ -161,5 +169,5 @@ class LutronButton:
             action = "single"
 
         if action:
-            data = {ATTR_ID: self._id, ATTR_ACTION: action}
+            data = {ATTR_ID: self._id, ATTR_ACTION: action, ATTR_FULL_ID: self._full_id}
             self._hass.bus.fire(self._event, data)

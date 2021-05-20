@@ -1,6 +1,7 @@
 """Component to interface with switches that can be controlled remotely."""
 from datetime import timedelta
 import logging
+from typing import final
 
 import voluptuous as vol
 
@@ -78,8 +79,8 @@ async def async_unload_entry(hass, entry):
     return await hass.data[DOMAIN].async_unload_entry(entry)
 
 
-class SwitchDevice(ToggleEntity):
-    """Representation of a switch."""
+class SwitchEntity(ToggleEntity):
+    """Base class for switch entities."""
 
     @property
     def current_power_w(self):
@@ -96,6 +97,7 @@ class SwitchDevice(ToggleEntity):
         """Return true if device is in standby."""
         return None
 
+    @final
     @property
     def state_attributes(self):
         """Return the optional state attributes."""
@@ -112,3 +114,15 @@ class SwitchDevice(ToggleEntity):
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
         return None
+
+
+class SwitchDevice(SwitchEntity):
+    """Representation of a switch (for backwards compatibility)."""
+
+    def __init_subclass__(cls, **kwargs):
+        """Print deprecation warning."""
+        super().__init_subclass__(**kwargs)
+        _LOGGER.warning(
+            "SwitchDevice is deprecated, modify %s to extend SwitchEntity",
+            cls.__name__,
+        )

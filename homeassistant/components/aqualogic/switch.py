@@ -1,16 +1,12 @@
 """Support for AquaLogic switches."""
-import logging
-
 from aqualogic.core import States
 import voluptuous as vol
 
-from homeassistant.components.switch import PLATFORM_SCHEMA, SwitchDevice
+from homeassistant.components.switch import PLATFORM_SCHEMA, SwitchEntity
 from homeassistant.const import CONF_MONITORED_CONDITIONS
 import homeassistant.helpers.config_validation as cv
 
 from . import DOMAIN, UPDATE_TOPIC
-
-_LOGGER = logging.getLogger(__name__)
 
 SWITCH_TYPES = {
     "lights": "Lights",
@@ -39,13 +35,13 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     switches = []
 
     processor = hass.data[DOMAIN]
-    for switch_type in config.get(CONF_MONITORED_CONDITIONS):
+    for switch_type in config[CONF_MONITORED_CONDITIONS]:
         switches.append(AquaLogicSwitch(processor, switch_type))
 
     async_add_entities(switches)
 
 
-class AquaLogicSwitch(SwitchDevice):
+class AquaLogicSwitch(SwitchEntity):
     """Switch implementation for the AquaLogic component."""
 
     def __init__(self, processor, switch_type):

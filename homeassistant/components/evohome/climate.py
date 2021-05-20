@@ -1,13 +1,11 @@
 """Support for Climate devices of (EMEA/EU-based) Honeywell TCC systems."""
+from __future__ import annotations
+
 from datetime import datetime as dt
 import logging
-from typing import List, Optional
 
-from homeassistant.components.climate import ClimateDevice
+from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_IDLE,
-    CURRENT_HVAC_OFF,
     HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
@@ -19,7 +17,8 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
 )
 from homeassistant.const import PRECISION_TENTHS
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import ConfigType
 import homeassistant.util.dt as dt_util
 
 from . import (
@@ -77,7 +76,7 @@ STATE_ATTRS_ZONES = ["zoneId", "activeFaults", "setpointStatus", "temperatureSta
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
+    hass: HomeAssistant, config: ConfigType, async_add_entities, discovery_info=None
 ) -> None:
     """Create the evohome Controller, and its Zones, if any."""
     if discovery_info is None:
@@ -122,7 +121,7 @@ async def async_setup_platform(
     async_add_entities([controller] + zones, update_before_add=True)
 
 
-class EvoClimateDevice(EvoDevice, ClimateDevice):
+class EvoClimateEntity(EvoDevice, ClimateEntity):
     """Base for an evohome Climate device."""
 
     def __init__(self, evo_broker, evo_device) -> None:
@@ -132,17 +131,17 @@ class EvoClimateDevice(EvoDevice, ClimateDevice):
         self._preset_modes = None
 
     @property
-    def hvac_modes(self) -> List[str]:
+    def hvac_modes(self) -> list[str]:
         """Return a list of available hvac operation modes."""
         return list(HA_HVAC_TO_TCS)
 
     @property
-    def preset_modes(self) -> Optional[List[str]]:
+    def preset_modes(self) -> list[str] | None:
         """Return a list of available preset modes."""
         return self._preset_modes
 
 
-class EvoZone(EvoChild, EvoClimateDevice):
+class EvoZone(EvoChild, EvoClimateEntity):
     """Base for a Honeywell TCC Zone."""
 
     def __init__(self, evo_broker, evo_device) -> None:
@@ -201,25 +200,12 @@ class EvoZone(EvoChild, EvoClimateDevice):
         return HVAC_MODE_OFF if is_off else HVAC_MODE_HEAT
 
     @property
-    def hvac_action(self) -> Optional[str]:
-        """Return the current running hvac operation if supported."""
-        if self._evo_tcs.systemModeStatus["mode"] == EVO_HEATOFF:
-            return CURRENT_HVAC_OFF
-        if self.target_temperature <= self.min_temp:
-            return CURRENT_HVAC_OFF
-        if not self._evo_device.temperatureStatus["isAvailable"]:
-            return None
-        if self.target_temperature <= self.current_temperature:
-            return CURRENT_HVAC_IDLE
-        return CURRENT_HVAC_HEAT
-
-    @property
     def target_temperature(self) -> float:
         """Return the target temperature of a Zone."""
         return self._evo_device.setpointStatus["targetHeatTemperature"]
 
     @property
-    def preset_mode(self) -> Optional[str]:
+    def preset_mode(self) -> str | None:
         """Return the current preset mode, e.g., home, away, temp."""
         if self._evo_tcs.systemModeStatus["mode"] in [EVO_AWAY, EVO_HEATOFF]:
             return TCS_PRESET_TO_HA.get(self._evo_tcs.systemModeStatus["mode"])
@@ -284,7 +270,7 @@ class EvoZone(EvoChild, EvoClimateDevice):
                 self._evo_device.cancel_temp_override()
             )
 
-    async def async_set_preset_mode(self, preset_mode: Optional[str]) -> None:
+    async def async_set_preset_mode(self, preset_mode: str | None) -> None:
         """Set the preset mode; if None, then revert to following the schedule."""
         evo_preset_mode = HA_PRESET_TO_EVO.get(preset_mode, EVO_FOLLOW)
 
@@ -315,7 +301,7 @@ class EvoZone(EvoChild, EvoClimateDevice):
             self._device_state_attrs[attr] = getattr(self._evo_device, attr)
 
 
-class EvoController(EvoClimateDevice):
+class EvoController(EvoClimateEntity):
     """Base for a Honeywell TCC Controller/Location.
 
     The Controller (aka TCS, temperature control system) is the parent of all the child
@@ -363,7 +349,7 @@ class EvoController(EvoClimateDevice):
 
         await self._set_tcs_mode(mode, until=until)
 
-    async def _set_tcs_mode(self, mode: str, until: Optional[dt] = None) -> None:
+    async def _set_tcs_mode(self, mode: str, until: dt | None = None) -> None:
         """Set a Controller to any of its native EVO_* operating modes."""
         until = dt_util.as_utc(until) if until else None
         await self._evo_broker.call_client_api(
@@ -377,7 +363,7 @@ class EvoController(EvoClimateDevice):
         return HVAC_MODE_OFF if tcs_mode == EVO_HEATOFF else HVAC_MODE_HEAT
 
     @property
-    def current_temperature(self) -> Optional[float]:
+    def current_temperature(self) -> float | None:
         """Return the average current temperature of the heating Zones.
 
         Controllers do not have a current temp, but one is expected by HA.
@@ -390,7 +376,7 @@ class EvoController(EvoClimateDevice):
         return round(sum(temps) / len(temps), 1) if temps else None
 
     @property
-    def preset_mode(self) -> Optional[str]:
+    def preset_mode(self) -> str | None:
         """Return the current preset mode, e.g., home, away, temp."""
         return TCS_PRESET_TO_HA.get(self._evo_tcs.systemModeStatus["mode"])
 
@@ -412,7 +398,7 @@ class EvoController(EvoClimateDevice):
         """Set an operating mode for a Controller."""
         await self._set_tcs_mode(HA_HVAC_TO_TCS.get(hvac_mode))
 
-    async def async_set_preset_mode(self, preset_mode: Optional[str]) -> None:
+    async def async_set_preset_mode(self, preset_mode: str | None) -> None:
         """Set the preset mode; if None, then revert to 'Auto' mode."""
         await self._set_tcs_mode(HA_PRESET_TO_TCS.get(preset_mode, EVO_AUTO))
 

@@ -7,7 +7,7 @@ import uuid
 import brottsplatskartan
 import voluptuous as vol
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
     CONF_LATITUDE,
@@ -15,7 +15,6 @@ from homeassistant.const import (
     CONF_NAME,
 )
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,7 +64,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     area = config.get(CONF_AREA)
     latitude = config.get(CONF_LATITUDE, hass.config.latitude)
     longitude = config.get(CONF_LONGITUDE, hass.config.longitude)
-    name = config.get(CONF_NAME)
+    name = config[CONF_NAME]
 
     # Every Home Assistant instance should have their own unique
     # app parameter: https://brottsplatskartan.se/sida/api
@@ -78,7 +77,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities([BrottsplatskartanSensor(bpk, name)], True)
 
 
-class BrottsplatskartanSensor(Entity):
+class BrottsplatskartanSensor(SensorEntity):
     """Representation of a Brottsplatskartan Sensor."""
 
     def __init__(self, bpk, name):
@@ -99,7 +98,7 @@ class BrottsplatskartanSensor(Entity):
         return self._state
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return self._attributes
 

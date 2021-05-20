@@ -31,12 +31,13 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-TAHOMA_COMPONENTS = ["binary_sensor", "cover", "lock", "scene", "sensor", "switch"]
+PLATFORMS = ["binary_sensor", "cover", "lock", "scene", "sensor", "switch"]
 
 TAHOMA_TYPES = {
     "io:AwningValanceIOComponent": "cover",
     "io:ExteriorVenetianBlindIOComponent": "cover",
     "io:DiscreteGarageOpenerIOComponent": "cover",
+    "io:DiscreteGarageOpenerWithPartialPositionIOComponent": "cover",
     "io:HorizontalAwningIOComponent": "cover",
     "io:GarageOpenerIOComponent": "cover",
     "io:LightIOSystemSensor": "sensor",
@@ -61,14 +62,18 @@ TAHOMA_TYPES = {
     "rts:DualCurtainRTSComponent": "cover",
     "rts:ExteriorVenetianBlindRTSComponent": "cover",
     "rts:GarageDoor4TRTSComponent": "switch",
+    "rts:LightRTSComponent": "switch",
     "rts:RollerShutterRTSComponent": "cover",
     "rts:OnOffRTSComponent": "switch",
     "rts:VenetianBlindRTSComponent": "cover",
+    "somfythermostat:SomfyThermostatTemperatureSensor": "sensor",
+    "somfythermostat:SomfyThermostatHumiditySensor": "sensor",
+    "zwave:OnOffLightZWaveComponent": "switch",
 }
 
 
 def setup(hass, config):
-    """Activate Tahoma component."""
+    """Set up Tahoma integration."""
 
     conf = config[DOMAIN]
     username = conf.get(CONF_USERNAME)
@@ -106,14 +111,14 @@ def setup(hass, config):
     for scene in scenes:
         hass.data[DOMAIN]["scenes"].append(scene)
 
-    for component in TAHOMA_COMPONENTS:
-        discovery.load_platform(hass, component, DOMAIN, {}, config)
+    for platform in PLATFORMS:
+        discovery.load_platform(hass, platform, DOMAIN, {}, config)
 
     return True
 
 
 def map_tahoma_device(tahoma_device):
-    """Map Tahoma device types to Home Assistant components."""
+    """Map Tahoma device types to Home Assistant platforms."""
     return TAHOMA_TYPES.get(tahoma_device.type)
 
 
@@ -132,7 +137,7 @@ class TahomaDevice(Entity):
         return self._name
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the device."""
         return {"tahoma_device_id": self.tahoma_device.url}
 
